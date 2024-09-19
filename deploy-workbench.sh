@@ -198,8 +198,7 @@ create_persistence_partition() {
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
                 ${SUDO} mkdir -p "${tmp_rw_mount}/settings"
-                # TODO without SUDO fails
-                ${SUDO} cat > "${tmp_rw_mount}/settings/settings.ini" <<END
+                ${SUDO} tee "${tmp_rw_mount}/settings/settings.ini" <<END
 [settings]
 
 DH_TOKEN =
