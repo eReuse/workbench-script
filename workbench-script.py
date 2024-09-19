@@ -273,7 +273,7 @@ def sync_time():
 
 
 def main():
-    print("START")
+    print("\n\nworkbench: START\n\n")
     parser=argparse.ArgumentParser()
     parser.add_argument("-p", "--path", required=True)
     parser.add_argument("-u", "--url", required=False)
@@ -312,7 +312,7 @@ def main():
     if args.url:
         send_snapshot_to_devicehub(snapshot, args.token, args.url)
 
-    print("END")
+    print("\n\nworkbench: END\n\n")
 
 
 if __name__ == '__main__':
