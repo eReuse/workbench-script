@@ -5,6 +5,7 @@ import json
 import uuid
 import hashlib
 import argparse
+import configparser
 
 import ntplib
 import requests
@@ -253,6 +254,7 @@ def save_snapshot_in_disk(snapshot, path):
         datetime.now().strftime("%Y%m%d-%H_%M_%S"),
         snapshot['uuid']
     )
+    print(f"workbench: Snapshot written in path '{filename}'")
     with open(filename, "w") as f:
         f.write(json.dumps(snapshot))
 
@@ -271,48 +273,75 @@ def sync_time():
     ntplib.NTPClient()
     response = client.request('pool.ntp.org')
 
+def load_config(config_file="settings.ini"):
+    """
+    Tries to load configuration from a config file.
+    """
+    config = configparser.ConfigParser()
+
+    if os.path.exists(config_file):
+        # If config file exists, read from it
+
+        print(f"workbench: Found config file in path: '{config_file}'.")
+        config.read(config_file)
+        path = config.get('settings', 'path', fallback=os.getcwd())
+        # TODO validate that has http:// start
+        url = config.get('settings', 'url', fallback=None)
+        token = config.get('settings', 'token', fallback=None)
+        # TODO validate that the device exists?
+        device = config.get('settings', 'device', fallback=None)
+        erase = config.get('settings', 'erase', fallback=None)
+    else:
+        print(f"workbench: Config file '{config_file}' not found. Using default values.")
+        path = os.path.join(os.getcwd())
+        url, token, device, erase = None, None, None, None
+
+    return {
+        'path': path,
+        'url': url,
+        'token': token,
+        'device': device,
+        'erase': erase
+    }
+
+def parse_args():
+    """
+    Parse config argument, if available
+    """
+    parser = argparse.ArgumentParser(description="Optional config loader for workbench.")
+    parser.add_argument(
+        '--config',
+        help="Path to the config file. Defaults to 'settings.ini' in the current directory.",
+        default="settings.ini"  # Fallback to 'settings.ini' by default
+    )
+    return parser.parse_args()
 
 def main():
-    print("\n\nworkbench: START\n\n")
-    parser=argparse.ArgumentParser()
-    parser.add_argument("-p", "--path", required=True)
-    parser.add_argument("-u", "--url", required=False)
-    parser.add_argument("-t", "--token", required=False)
-    parser.add_argument("-d", "--device", required=False)
-    parser.add_argument(
-        "-e",
-        "--erase",
-        choices=["basic", "baseline", "enhanced"],
-        required=False
-    )
-    args=parser.parse_args()
+    vline='\n___________\n\n'
+    print(f"{vline}workbench: START\n")
 
-    if args.device and not args.erase:
-        print("error: argument --erase: expected one argument")
-        return
-    
-    if args.token and not args.url:
-        print("error: argument --url: expected one argument")
-        return
-    
-    if args.url and not args.token:
-        print("error: argument --token: expected one argument")
-        return
+    # Parse the command-line arguments
+    args = parse_args()
+
+    # Load the config file, either specified via --config or the default 'settings.ini'
+    config_file = args.config
+
+    config = load_config(config_file)
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
 
-    if args.erase and args.device:
-        snapshot['erase'] = gen_erase(all_disks, args.erase, user_disk=args.device)
-    elif args.erase:
-        snapshot['erase'] = gen_erase(all_disks, args.erase)
+    if config['erase'] and config['device']:
+        snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
+    elif config['erase']:
+        snapshot['erase'] = gen_erase(all_disks, config['erase'])
 
-    save_snapshot_in_disk(snapshot, args.path)
-    
-    if args.url:
-        send_snapshot_to_devicehub(snapshot, args.token, args.url)
+    save_snapshot_in_disk(snapshot, config['path'])
 
-    print("\n\nworkbench: END\n\n")
+    if config['url']:
+        send_snapshot_to_devicehub(snapshot, config['token'], config['url'])
+
+    print(f"\nworkbench: END{vline}")
 
 
 if __name__ == '__main__':

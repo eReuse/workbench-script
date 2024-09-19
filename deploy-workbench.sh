@@ -271,7 +271,7 @@ stty -echo # Do not show what we type in terminal so it does not meddle with our
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
-pipenv run python /opt/workbench/workbench-script.py
+pipenv run python /opt/workbench/workbench-script.py --config "/mnt/settings/settings.ini"
 stty echo
 END
         #TODO add some useful commands
