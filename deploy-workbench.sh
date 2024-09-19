@@ -260,8 +260,9 @@ prepare_app() {
         # prepare app during prepare_chroot_env
         # Install hardware_metadata module
         workbench_dir="${ISO_PATH}/chroot/opt/workbench"
-        ${SUDO} cp workbench-script.py "${workbench_dir}"
-        ${SUDO} cp requirements.txt "${workbench_dir}"
+        ${SUDO} mkdir -p "${workbench_dir}"
+        ${SUDO} cp workbench-script.py "${workbench_dir}/"
+        ${SUDO} cp requirements.txt "${workbench_dir}/"
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
