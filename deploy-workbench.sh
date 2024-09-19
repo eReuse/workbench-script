@@ -249,7 +249,7 @@ END2
 ###################
 # configure hosts
 cat > /etc/hosts <<END2
-127.0.0.1    localhost \${hostname}
+127.0.0.1    localhost workbench
 ::1          localhost ip6-localhost ip6-loopback
 ff02::1      ip6-allnodes
 ff02::2      ip6-allrouters
@@ -286,6 +286,7 @@ echo 'Install requirements'
 
 # Install debian requirements
 apt-get install -y --no-install-recommends \
+  sudo \
   python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw < /dev/null
   # Install python requirements using apt instead of pip
@@ -312,7 +313,7 @@ run_chroot() {
 set -x
 set -e
 
-echo "${hostname}" > /etc/hostname
+echo workbench > /etc/hostname
 
 # check what linux images are available on the system
 # Figure out which Linux Kernel you want in the live environment.

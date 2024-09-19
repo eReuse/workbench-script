@@ -228,9 +228,9 @@ def smartctl(all_disks, disk=None):
 
 
 def get_data(all_disks):
-    lshw = 'lshw -json'
-    hwinfo = 'hwinfo --reallyall'
-    dmidecode = 'dmidecode'
+    lshw = 'sudo lshw -json'
+    hwinfo = 'sudo hwinfo --reallyall'
+    dmidecode = 'sudo dmidecode'
     data = {
         'lshw': exec_cmd(lshw),
         'disks': smartctl(all_disks),
