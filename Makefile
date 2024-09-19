@@ -22,7 +22,7 @@ install_dependencies:
 boot_iso:
 	sudo qemu-system-x86_64 \
 		-enable-kvm -m 2G -vga qxl -netdev user,id=wan -device virtio-net,netdev=wan,id=nic1 \
-		-drive format=raw,file=iso/workbench.iso,cache=none,if=virtio
+		-drive format=raw,file=iso/workbench_production.iso,cache=none,if=virtio
 
 # src https://www.ubuntubuzz.com/2021/04/how-to-boot-uefi-on-qemu.html
 #   needs `sudo apt-get install ovmf`
