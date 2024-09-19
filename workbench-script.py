@@ -259,12 +259,15 @@ def save_snapshot_in_disk(snapshot, path):
         f.write(json.dumps(snapshot))
 
 
+# TODO sanitize url, if url is like this, it fails
+#   url = 'http://127.0.0.1:8000/api/snapshot/'
 def send_snapshot_to_devicehub(snapshot, token, url):
     headers = {
         f"Authorization": "Basic {token}",
         "Content-Type": "application/json"
     }
-    return requests.post(url, data=snapshot, header=headers)
+
+    return requests.post(url, data=json.dumps(snapshot), headers=headers)
 
 
 @logs
