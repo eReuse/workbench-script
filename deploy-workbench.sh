@@ -98,7 +98,7 @@ LABEL linux
 END
 )"
         #   TIMEOUT 60 means 6 seconds :)
-        sudo tee "${ISO_PATH}/staging/isolinux/isolinux.cfg" <<EOF
+        ${SUDO} tee "${ISO_PATH}/staging/isolinux/isolinux.cfg" <<EOF
 ${isolinuxcfg_str}
 EOF
         ${SUDO} cp /usr/lib/ISOLINUX/isolinux.bin "${ISO_PATH}/staging/isolinux/"
