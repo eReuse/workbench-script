@@ -201,12 +201,8 @@ create_persistence_partition() {
                 ${SUDO} tee "${tmp_rw_mount}/settings/settings.ini" <<END
 [settings]
 
-DH_TOKEN =
-DH_URL =
-
-SNAPSHOTS_PATH = /mnt
-LOGS_PATH = /mnt
-VERSION =
+url = http://127.0.0.1:8000/api/snapshot/
+token = '1234'
 END
                 ${SUDO} umount "${tmp_rw_mount}"
 
