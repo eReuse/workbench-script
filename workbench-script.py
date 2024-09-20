@@ -254,7 +254,7 @@ def save_snapshot_in_disk(snapshot, path):
         datetime.now().strftime("%Y%m%d-%H_%M_%S"),
         snapshot['uuid']
     )
-    print(f"workbench: Snapshot written in path '{filename}'")
+    print(f"workbench: INFO: Snapshot written in path '{filename}'")
     with open(filename, "w") as f:
         f.write(json.dumps(snapshot))
 
@@ -266,9 +266,11 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         f"Authorization": "Basic {token}",
         "Content-Type": "application/json"
     }
-
-    return requests.post(url, data=json.dumps(snapshot), headers=headers)
-
+    try:
+        requests.post(url, data=json.dumps(snapshot), headers=headers)
+        print(f"workbench: INFO: Snapshot sent to '{url}'")
+    except:
+        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?")
 
 @logs
 def sync_time():
@@ -285,7 +287,7 @@ def load_config(config_file="settings.ini"):
     if os.path.exists(config_file):
         # If config file exists, read from it
 
-        print(f"workbench: Found config file in path: '{config_file}'.")
+        print(f"workbench: INFO: Found config file in path: '{config_file}'.")
         config.read(config_file)
         path = config.get('settings', 'path', fallback=os.getcwd())
         # TODO validate that has http:// start
@@ -295,7 +297,7 @@ def load_config(config_file="settings.ini"):
         device = config.get('settings', 'device', fallback=None)
         erase = config.get('settings', 'erase', fallback=None)
     else:
-        print(f"workbench: Config file '{config_file}' not found. Using default values.")
+        print(f"workbench: ERROR: Config file '{config_file}' not found. Using default values.")
         path = os.path.join(os.getcwd())
         url, token, device, erase = None, None, None, None
 
