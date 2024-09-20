@@ -198,12 +198,7 @@ create_persistence_partition() {
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
                 ${SUDO} mkdir -p "${tmp_rw_mount}/settings"
-                ${SUDO} tee "${tmp_rw_mount}/settings/settings.ini" <<END
-[settings]
-
-url = http://127.0.0.1:8000/api/snapshot/
-token = '1234'
-END
+                ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings/settings.ini"
                 ${SUDO} umount "${tmp_rw_mount}"
 
                 uuid="$(blkid "${rw_img_path}" | awk '{ print $3; }')"
