@@ -189,7 +189,8 @@ create_persistence_partition() {
         rw_img_name="workbench_vfat.img"
         rw_img_path="${ISO_PATH}/staging/${rw_img_name}"
         if [ ! -f "${rw_img_path}" ] || [ "${DEBUG:-}" ] || [ "${FORCE:-}" ]; then
-                ${SUDO} dd if=/dev/zero of="${rw_img_path}" bs=10M count=1
+                persistent_volume_size=100
+                ${SUDO} dd if=/dev/zero of="${rw_img_path}" bs=1M count=${persistent_volume_size}
                 ${SUDO} mkfs.vfat "${rw_img_path}"
 
                 # generate structure on persistent partition
