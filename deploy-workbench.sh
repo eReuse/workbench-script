@@ -382,7 +382,7 @@ prepare_chroot_env() {
         if [ -z "${VERSION_CODENAME:-}" ]; then
                 . /etc/os-release
                 echo "TAKING OS-RELEASE FILE"
-                if [ "${ID}" = "debian" ]; then
+                if [ ! "${ID}" = "debian" ]; then
                         echo "ERROR: ubuntu detected, then you are enforced to specify debian variant"
                         echo "  use for example \`VERSION_CODENAME='bookworm'\` or similar"
                         exit 1
