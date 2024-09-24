@@ -59,6 +59,10 @@ END
 }
 
 init_config() {
+
+        # get where the script is
+        cd "$(dirname "${0}")"
+
         if [ -f ./.env ]; then
                 . ./.env
         else
