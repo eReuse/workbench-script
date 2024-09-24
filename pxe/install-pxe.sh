@@ -66,7 +66,7 @@ init_config() {
         if [ -f ./.env ]; then
                 . ./.env
         else
-                echo 'WARNING: .env does not exist yet, cannot read config from there. You can take inspiration with file .env.example'
+                echo 'PXE: WARNING: .env does not exist yet, cannot read config from there. You can take inspiration with file .env.example'
         fi
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
