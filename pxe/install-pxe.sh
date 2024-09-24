@@ -43,7 +43,7 @@ END
 
 install_netboot() {
         # if you want to refresh install, remove or move dir
-        if [ ! -d "${tftp_path}" ]; then
+        if [ ! -d "${tftp_path}" ] || [ "${FORCE}" ]; then
                 mkdir -p "${tftp_path}"
                 cd "${tftp_path}"
                 wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
