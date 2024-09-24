@@ -23,7 +23,7 @@ backup_file() {
 
 install_nfs() {
         backup_file /etc/exports
-        cat /etc/exports <<END
+        cat > /etc/exports <<END
 ${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
 END
 }
