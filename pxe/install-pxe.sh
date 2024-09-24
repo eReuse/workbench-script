@@ -48,12 +48,14 @@ install_netboot() {
                 cd "${tftp_path}"
                 wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
                 tar xvf netboot.tar.gz
+                cp debian-installer/amd64/linux .
+                cp debian-installer/amd64/initrd.gz .
                 cat > "${tftp_path}/pxelinux.cfg/default" <<END
 default wb
 
 label wb
-        KERNEL debian-installer/amd64/linux
-        INITRD debian-installer/amd64/initd.gz
+        KERNEL linux
+        INITRD initrd.gz
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
         fi
