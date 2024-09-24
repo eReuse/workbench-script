@@ -36,7 +36,7 @@ dhcp-range=${nfs_allowed_lan%/*},proxy
 dhcp-boot=pxelinux.0
 pxe-service=x86PC,"Network Boot",pxelinux
 enable-tftp
-tftp-root=/srv/tftp
+tftp-root=${tftp_path}
 END
 }
 
