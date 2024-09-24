@@ -26,6 +26,7 @@ install_nfs() {
         cat > /etc/exports <<END
 ${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
 END
+        mkdir -p "${nfs_path}"
 }
 
 install_tftp() {
