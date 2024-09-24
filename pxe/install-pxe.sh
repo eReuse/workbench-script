@@ -47,7 +47,7 @@ install_netboot() {
                 cd "${tftp_path}"
                 wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
                 tar xvf netboot.tar.gz
-                cat "${tftp_path}/pxelinux.cfg/default" <<END
+                cat > "${tftp_path}/pxelinux.cfg/default" <<END
 default wb
 
 label wb
