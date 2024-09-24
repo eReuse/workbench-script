@@ -29,11 +29,14 @@ END
 }
 
 install_tftp() {
-        # TODO creo que se puede hacer un fichero de config específico
-        #   podría ser algo como /etc/dnsmasq.conf.d/my-pxe-server ?
-        #backup_file /etc/dnsmasq.conf
-        cat /etc/exports <<END
-${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
+
+        cat > /etc/dnsmasq.d/pxe-tftp <<END
+port=0
+dhcp-range=${nfs_allowed_lan%/*},proxy
+dhcp-boot=pxelinux.0
+pxe-service=x86PC,"Network Boot",pxelinux
+enable-tftp
+tftp-root=/srv/tftp
 END
 }
 
