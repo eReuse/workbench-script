@@ -52,8 +52,8 @@ install_netboot() {
 default wb
 
 label wb
-        KERNEL vmlinuz
-        INITRD initd.img
+        KERNEL debian-installer/amd64/linux
+        INITRD debian-installer/amd64/initd.gz
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
         fi
