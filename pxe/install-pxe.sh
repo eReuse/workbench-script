@@ -80,6 +80,7 @@ main() {
         install_netboot
         install_tftp
         install_nfs
+        echo "PXE: Installation finished"
 }
 
 main "${@}"
