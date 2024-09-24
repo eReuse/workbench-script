@@ -57,9 +57,9 @@ END
 
 init_config() {
         if [ -f ./.env ]; then
-                . ./env
+                . ./.env
         else
-                echo 'WARNING: ./env does not exist, cannot read config from there'
+                echo 'WARNING: ./.env does not exist yet, cannot read config from there. You can take inspiration in file ./.env.example'
         fi
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
