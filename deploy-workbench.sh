@@ -405,7 +405,8 @@ install_requirements() {
         image_deps='debootstrap
                     squashfs-tools
                     xorriso
-                    mtools'
+                    mtools
+                    dosfstools'
         # secureboot:
         #   -> extra src https://wiki.debian.org/SecureBoot/
         #   -> extra src https://wiki.debian.org/SecureBoot/VirtualMachine
