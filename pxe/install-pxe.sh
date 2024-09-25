@@ -26,11 +26,13 @@ install_nfs() {
         cat > /etc/exports <<END
 ${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
 END
-        mkdir -p "${nfs_path}"
+        # append live directory, which is expected by the debian live env
+        mkdir -p "${nfs_path}/live"
 }
 
 install_tftp() {
 
+        # from https://wiki.debian.org/PXEBootInstall#Simple_way_-_using_Dnsmasq
         cat > /etc/dnsmasq.d/pxe-tftp <<END
 port=0
 dhcp-range=${nfs_allowed_lan%/*},proxy
@@ -41,15 +43,29 @@ tftp-root=${tftp_path}
 END
 }
 
+extract_live_parts_for_tftp() {
+        # src https://www.debian.org/CD/faq/#newest
+        DEBIAN_VERSION="$(wget https://www.debian.org/CD/ -O- \
+                | grep -o '<strong>[0-9.]*</strong>' \
+                | grep -o '[0-9.]*')"
+        url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-${DEBIAN_VERSION}-amd64-standard.iso"
+        wget "${url}" -O /tmp/live.iso
+
+        mount -o loop live.iso /mnt/
+        cp /mnt/live/vmlinuz "${tftp_path}/vmlinuz-live"
+        cp /mnt/live/initrd.img "${tftp_path}/initrd-live.img"
+        umount /mnt
+}
+
 install_netboot() {
         # if you want to refresh install, remove or move dir
         if [ ! -d "${tftp_path}" ] || [ "${FORCE}" ]; then
                 mkdir -p "${tftp_path}"
                 cd "${tftp_path}"
-                wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
-                tar xvf netboot.tar.gz
-                cp debian-installer/amd64/linux .
-                cp debian-installer/amd64/initrd.gz .
+                if [ -f /tmp/live.iso ]; then
+                        extract_live_parts_for_tftp
+                fi
+
                 cat > "${tftp_path}/pxelinux.cfg/default" <<END
 default wb
 
