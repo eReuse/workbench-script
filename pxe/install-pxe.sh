@@ -24,16 +24,15 @@ backup_file() {
 install_nfs() {
         backup_file /etc/exports
         cat > /etc/exports <<END
-${nfs_images_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
-${nfs_wbdata_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
+${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
 END
         # append live directory, which is expected by the debian live env
-        mkdir -p "${nfs_images_path}/live"
-        mkdir -p "${nfs_wbdata_path}/snapshots"
+        mkdir -p "${nfs_path}/live"
+        mkdir -p "${nfs_path}/snapshots"
 
-        if [ ! -f "${nfs_wbdata_path}/settings.ini" ]; then
-                if [ -f "../settings.ini" ]; then
-                        cp -v ../settings.ini "${nfs_wbdata_path}/settings/settings.ini"
+        if [ ! -f "${nfs_path}/settings.ini" ]; then
+                if [ -f "settings.ini" ]; then
+                        ln -sv "${nfs_path}/settings.ini" "settings.ini"
                 else
                         echo "ERROR: ../settings.ini does not exist yet, cannot read config from there. You can take inspiration with file ../settings.ini.example"
                         exit 1
@@ -84,7 +83,7 @@ default wb
 label wb
         KERNEL vmlinuz
         INITRD initrd.img
-        APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_images_path}/ boot=live text forcepae
+        APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
         fi
 }
@@ -101,8 +100,7 @@ init_config() {
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
         server_ip="${server_ip}"
-        nfs_images_path="${nfs_images_path:-/srv/pxe-images}"
-        nfs_wbdata_path="${nfs_wbdata_path:-/srv/pxe-wbdata}"
+        nfs_path="${nfs_path:-/srv/pxe-nfs}"
 }
 
 main() {
