@@ -44,13 +44,14 @@ END
 }
 
 extract_live_parts_for_tftp() {
+        if [ ! -f /tmp/live.iso ]; then
         # src https://www.debian.org/CD/faq/#newest
-        DEBIAN_VERSION="$(wget https://www.debian.org/CD/ -O- \
-                | grep -o '<strong>[0-9.]*</strong>' \
-                | grep -o '[0-9.]*')"
-        url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-${DEBIAN_VERSION}-amd64-standard.iso"
-        wget "${url}" -O /tmp/live.iso
-
+                DEBIAN_VERSION="$(wget https://www.debian.org/CD/ -O- \
+                        | grep -o '<strong>[0-9.]*</strong>' \
+                        | grep -o '[0-9.]*')"
+                url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-${DEBIAN_VERSION}-amd64-standard.iso"
+                wget "${url}" -O /tmp/live.iso
+        fi
         mount -o loop live.iso /mnt/
         cp /mnt/live/vmlinuz "${tftp_path}/vmlinuz-live"
         cp /mnt/live/initrd.img "${tftp_path}/initrd-live.img"
@@ -62,9 +63,7 @@ install_netboot() {
         if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
                 mkdir -p "${tftp_path}"
                 cd "${tftp_path}"
-                if [ -f /tmp/live.iso ]; then
-                        extract_live_parts_for_tftp
-                fi
+                extract_live_parts_for_tftp
 
                 cat > "${tftp_path}/pxelinux.cfg/default" <<END
 default wb
