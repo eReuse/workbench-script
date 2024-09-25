@@ -52,7 +52,7 @@ extract_live_parts_for_tftp() {
                 url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-${DEBIAN_VERSION}-amd64-standard.iso"
                 wget "${url}" -O /tmp/live.iso
         fi
-        mount -o loop live.iso /mnt/
+        mount -o loop /tmp/live.iso /mnt/
         cp /mnt/live/vmlinuz "${tftp_path}/vmlinuz-live"
         cp /mnt/live/initrd.img "${tftp_path}/initrd-live.img"
         umount /mnt
