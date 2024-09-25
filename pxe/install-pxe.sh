@@ -10,7 +10,7 @@ set -x
 
 install_dependencies() {
         apt update
-        apt install -y wget dnsmasq nfs-kernel-server
+        apt install -y wget dnsmasq nfs-kernel-server rsync
 }
 
 backup_file() {
@@ -56,7 +56,7 @@ END
 extract_live_parts_for_tftp() {
         cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
         cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
-        ln -sfv "${nfs_path}/live/" "${PXE_DIR}/../iso/staging/live/filesystem.squashfs"
+        rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
 }
 
 install_netboot() {
