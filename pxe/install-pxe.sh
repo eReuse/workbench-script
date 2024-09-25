@@ -54,9 +54,9 @@ END
 }
 
 extract_live_parts_for_tftp() {
-        ln -sfv "$(pwd)/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
-        ln -sfv "$(pwd)/../iso/staging/live/vmlinuz" "${tftp_path}/"
-        ln -sfv "$(pwd)/../iso/staging/live/initrd.img" "${tftp_path}/"
+        ln -sfv "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
+        ln -sfv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
+        ln -sfv "${PXE_DIR}/../iso/staging/live/initrd.img" "${tftp_path}/"
 }
 
 install_netboot() {
@@ -80,6 +80,7 @@ END
 init_config() {
         # get where the script is
         cd "$(dirname "${0}")"
+        PXE_DIR="$(pwd)"
 
         if [ -f ./.env ]; then
                 . ./.env
