@@ -34,12 +34,12 @@ END
 
 create_iso() {
         # Copy kernel and initramfs
-        vmlinuz="$(ls -1v ${ISO_PATH}/chroot/boot/vmlinuz-* | tail -n 1)"
-        initrd="$(ls -1v ${ISO_PATH}/chroot/boot/initrd.img-* | tail -n 1)"
-        ${SUDO} cp ${vmlinuz} ${ISO_PATH}/staging/live/vmlinuz
-        ${SUDO} cp ${initrd} ${ISO_PATH}/staging/live/initrd
+        vmlinuz="$(ls -1v "${ISO_PATH}"/chroot/boot/vmlinuz-* | tail -n 1)"
+        initrd="$(ls -1v "${ISO_PATH}"/chroot/boot/initrd.img-* | tail -n 1)"
+        ${SUDO} cp ${vmlinuz} "${ISO_PATH}"/staging/live/vmlinuz
+        ${SUDO} cp ${initrd} "${ISO_PATH}"/staging/live/initrd
         # Creating ISO
-        iso_path="${ISO_PATH}/${iso_name}.iso"
+        iso_path=""${ISO_PATH}"/${iso_name}.iso"
 
         # 0x14 is FAT16 Hidden FAT16 <32, this is the only format detected in windows10 automatically when using a persistent volume of 10 MB
         ${SUDO} xorrisofs \
@@ -59,7 +59,7 @@ create_iso() {
                 -e /EFI/boot/efiboot.img \
                 -no-emul-boot \
                 -isohybrid-gpt-basdat \
-                -append_partition 2 0xef ${ISO_PATH}/staging/EFI/boot/efiboot.img \
+                -append_partition 2 0xef "${ISO_PATH}"/staging/EFI/boot/efiboot.img \
                 -append_partition 3 0x14 "${rw_img_path}" \
                 "${ISO_PATH}/staging"
 
@@ -138,7 +138,7 @@ EOF
 
         ${SUDO} grub-mkstandalone \
                 --format=x86_64-efi \
-                --output=${ISO_PATH}/tmp/bootx64.efi \
+                --output="${ISO_PATH}"/tmp/bootx64.efi \
                 --locales="" \
                 --fonts="" \
                 "boot/grub/grub.cfg=${ISO_PATH}/tmp/grub-standalone.cfg"
@@ -149,10 +149,10 @@ EOF
   #   grubx64 looks for a file in /EFI/debian/grub.cfg -> src src https://unix.stackexchange.com/questions/648089/uefi-grub-not-finding-config-file
         ${SUDO} cp /usr/lib/shim/shimx64.efi.signed /tmp/bootx64.efi
         ${SUDO} cp /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed /tmp/grubx64.efi
-        ${SUDO} cp ${ISO_PATH}/tmp/grub-standalone.cfg ${ISO_PATH}/staging/EFI/debian/grub.cfg
+        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" "${ISO_PATH}/staging/EFI/debian/grub.cfg"
 
         (
-                cd ${ISO_PATH}/staging/EFI/boot
+                cd "${ISO_PATH}/staging/EFI/boot"
                 ${SUDO} dd if=/dev/zero of=efiboot.img bs=1M count=20
                 ${SUDO} mkfs.vfat efiboot.img
                 ${SUDO} mmd -i efiboot.img efi efi/boot
@@ -178,8 +178,8 @@ compress_chroot_dir() {
         # why squashfs -> https://unix.stackexchange.com/questions/163190/why-do-liveusbs-use-squashfs-and-similar-file-systems
         # noappend option needed to avoid this situation -> https://unix.stackexchange.com/questions/80447/merging-preexisting-source-folders-in-mksquashfs
         ${SUDO} mksquashfs \
-                ${ISO_PATH}/chroot \
-                ${ISO_PATH}/staging/live/filesystem.squashfs \
+                "${ISO_PATH}/chroot" \
+                "${ISO_PATH}/staging/live/filesystem.squashfs" \
                 ${DEBUG_SQUASHFS_ARGS:-} \
                 -noappend -e boot
 }
@@ -429,17 +429,17 @@ install_requirements() {
 
 # thanks https://willhaley.com/blog/custom-debian-live-environment/
 create_base_dirs() {
-        mkdir -p ${ISO_PATH}
-        mkdir -p ${ISO_PATH}/staging/EFI/boot
-        mkdir -p ${ISO_PATH}/staging/boot/grub/x86_64-efi
-        mkdir -p ${ISO_PATH}/staging/isolinux
-        mkdir -p ${ISO_PATH}/staging/live
-        mkdir -p ${ISO_PATH}/tmp
+        mkdir -p "${ISO_PATH}"
+        mkdir -p "${ISO_PATH}/staging/EFI/boot"
+        mkdir -p "${ISO_PATH}/staging/boot/grub/x86_64-efi"
+        mkdir -p "${ISO_PATH}/staging/isolinux"
+        mkdir -p "${ISO_PATH}/staging/live"
+        mkdir -p "${ISO_PATH}/tmp"
         # usb name
-        ${SUDO} touch ${ISO_PATH}/staging/${iso_name}
+        ${SUDO} touch "${ISO_PATH}/staging/${iso_name}"
 
         # for uefi secure boot grub config file
-        mkdir -p ${ISO_PATH}/staging/EFI/debian
+        mkdir -p "${ISO_PATH}/staging/EFI/debian"
 }
 
 # this function is used both in shell and chroot
