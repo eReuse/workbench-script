@@ -69,8 +69,8 @@ install_netboot() {
 default wb
 
 label wb
-        KERNEL linux
-        INITRD initrd.gz
+        KERNEL vmlinuz
+        INITRD initrd.img
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
         fi
