@@ -77,7 +77,7 @@ default wb
 
 label wb
         KERNEL vmlinuz
-        INITRD initrd.img
+        INITRD initrd
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
                 cd -
