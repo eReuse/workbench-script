@@ -59,7 +59,7 @@ extract_live_parts_for_tftp() {
 
 install_netboot() {
         # if you want to refresh install, remove or move dir
-        if [ ! -d "${tftp_path}" ] || [ "${FORCE}" ]; then
+        if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
                 mkdir -p "${tftp_path}"
                 cd "${tftp_path}"
                 if [ -f /tmp/live.iso ]; then
