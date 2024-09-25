@@ -32,7 +32,7 @@ END
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
                 if [ -f "settings.ini" ]; then
-                        ln -sv "$(pwd)/settings.ini"" ${nfs_path}/settings.ini"
+                        ln -sfv "$(pwd)/settings.ini"" ${nfs_path}/settings.ini"
                 else
                         echo "ERROR: ../settings.ini does not exist yet, cannot read config from there. You can take inspiration with file ../settings.ini.example"
                         exit 1
@@ -54,20 +54,9 @@ END
 }
 
 extract_live_parts_for_tftp() {
-        # this is slow, so it is not enforced, reboot or remove the
-        #   file to redownload the live iso
-        if [ ! -f /tmp/live.iso ]; then
-        # src https://www.debian.org/CD/faq/#newest
-                DEBIAN_VERSION="$(wget https://www.debian.org/CD/ -O- \
-                        | grep -o '<strong>[0-9.]*</strong>' \
-                        | grep -o '[0-9.]*')"
-                url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-${DEBIAN_VERSION}-amd64-standard.iso"
-                wget "${url}" -O /tmp/live.iso
-        fi
-        mount -o loop /tmp/live.iso /mnt/
-        cp /mnt/live/vmlinuz "${tftp_path}/"
-        cp /mnt/live/initrd.img "${tftp_path}/"
-        umount /mnt
+        ln -sfv "$(pwd)/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
+        ln -sfv "$(pwd)/../iso/staging/live/vmlinuz" "${tftp_path}/"
+        ln -sfv "$(pwd)/../iso/staging/live/initrd.img" "${tftp_path}/"
 }
 
 install_netboot() {
