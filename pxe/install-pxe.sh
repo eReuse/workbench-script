@@ -34,7 +34,7 @@ END
                 if [ -f "settings.ini" ]; then
                         cp settings.ini "${nfs_path}/settings.ini"
                 else
-                        echo "ERROR: ../settings.ini does not exist yet, cannot read config from there. You can take inspiration with file ../settings.ini.example"
+                        echo "ERROR: $(pwd)/settings.ini does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/settings.ini.example"
                         exit 1
                 fi
         fi
@@ -89,7 +89,7 @@ init_config() {
         if [ -f ./.env ]; then
                 . ./.env
         else
-                echo 'PXE: WARNING: .env does not exist yet, cannot read config from there. You can take inspiration with file .env.example'
+                echo "PXE: WARNING: $(pwd)/.env does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/.env.example"
         fi
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
