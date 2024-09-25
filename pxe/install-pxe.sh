@@ -55,6 +55,8 @@ END
 }
 
 extract_live_parts_for_tftp() {
+        # this is slow, so it is not enforced, reboot or remove the
+        #   file to redownload the live iso
         if [ ! -f /tmp/live.iso ]; then
         # src https://www.debian.org/CD/faq/#newest
                 DEBIAN_VERSION="$(wget https://www.debian.org/CD/ -O- \
