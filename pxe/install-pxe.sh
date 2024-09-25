@@ -53,8 +53,8 @@ extract_live_parts_for_tftp() {
                 wget "${url}" -O /tmp/live.iso
         fi
         mount -o loop /tmp/live.iso /mnt/
-        cp /mnt/live/vmlinuz "${tftp_path}/vmlinuz-live"
-        cp /mnt/live/initrd.img "${tftp_path}/initrd-live.img"
+        cp /mnt/live/vmlinuz "${tftp_path}/"
+        cp /mnt/live/initrd.img "${tftp_path}/"
         umount /mnt
 }
 
