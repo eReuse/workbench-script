@@ -249,15 +249,30 @@ def gen_snapshot(all_disks):
 
 
 def save_snapshot_in_disk(snapshot, path):
-    filename = "{}/{}_{}.json".format(
-        path,
-        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
-        snapshot['uuid']
-    )
-    print(f"workbench: INFO: Snapshot written in path '{filename}'")
-    with open(filename, "w") as f:
-        f.write(json.dumps(snapshot))
+    snapshot_path = os.path.join(path, 'snapshots')
 
+    filename = "{}/{}_{}.json".format(
+        snapshot_path,
+        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+        snapshot['uuid'])
+
+    try:
+        if not os.path.exists(snapshot_path):
+            os.makedirs(snapshot_path)
+            print(f"workbench: INFO: Created snapshots directory at '{snapshot_path}'")
+
+        with open(filename, "w") as f:
+            f.write(json.dumps(snapshot))
+        print(f"workbench: INFO: Snapshot written in path '{filename}'")
+    except Exception as e:
+        print(f"workbench: WARNING: Failed to write in snapshots directory: {e}. Attempting to save in actual path.")
+        fallback_filename = "{}/{}_{}.json".format(
+            path,
+            datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+            snapshot['uuid'])
+        with open(fallback_filename, "w") as f:
+            f.write(json.dumps(snapshot))
+        print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
