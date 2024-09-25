@@ -53,12 +53,6 @@ tftp-root=${tftp_path}
 END
 }
 
-extract_live_parts_for_tftp() {
-        cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
-        cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
-        rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
-}
-
 install_netboot() {
         # if you want to refresh install, remove or move dir
         if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
@@ -70,7 +64,10 @@ install_netboot() {
                         rm -rf "${tftp_path}/pxelinux.cfg"
                         mkdir -p "${tftp_path}/pxelinux.cfg"
                 fi
-                extract_live_parts_for_tftp
+
+                cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
+                cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
+                rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
 
                 cat > "${tftp_path}/pxelinux.cfg/default" <<END
 default wb
@@ -103,9 +100,9 @@ init_config() {
 main() {
         init_config
         install_dependencies
-        install_netboot
         install_tftp
         install_nfs
+        install_netboot
         echo "PXE: Installation finished"
 }
 
