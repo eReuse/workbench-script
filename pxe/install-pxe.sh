@@ -68,6 +68,7 @@ install_netboot() {
                         wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
                         tar xvf netboot.tar.gz || true
                         rm -rf "${tftp_path}/pxelinux.cfg"
+                        mkdir -p "${tftp_path}/pxelinux.cfg"
                 fi
                 extract_live_parts_for_tftp
 
