@@ -32,7 +32,7 @@ END
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
                 if [ -f "settings.ini" ]; then
-                        ln -sv "${nfs_path}/settings.ini" "settings.ini"
+                        ln -sv "$(pwd)/settings.ini"" ${nfs_path}/settings.ini"
                 else
                         echo "ERROR: ../settings.ini does not exist yet, cannot read config from there. You can take inspiration with file ../settings.ini.example"
                         exit 1
