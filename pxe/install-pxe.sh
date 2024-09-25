@@ -56,7 +56,7 @@ END
 extract_live_parts_for_tftp() {
         ln -sfv "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
         ln -sfv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
-        ln -sfv "${PXE_DIR}/../iso/staging/live/initrd.img" "${tftp_path}/"
+        ln -sfv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
 }
 
 install_netboot() {
