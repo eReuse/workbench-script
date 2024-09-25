@@ -80,6 +80,7 @@ label wb
         INITRD initrd.img
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
+                cd -
         fi
 }
 
