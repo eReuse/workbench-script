@@ -7,7 +7,6 @@ import hashlib
 import argparse
 import configparser
 
-import ntplib
 import requests
 
 
@@ -286,12 +285,6 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         print(f"workbench: INFO: Snapshot sent to '{url}'")
     except:
         print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?")
-
-@logs
-def sync_time():
-    # is neccessary?
-    ntplib.NTPClient()
-    response = client.request('pool.ntp.org')
 
 def load_config(config_file="settings.ini"):
     """
