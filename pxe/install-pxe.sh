@@ -62,7 +62,7 @@ extract_live_parts_for_tftp() {
 install_netboot() {
         # if you want to refresh install, remove or move dir
         if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
-                mkdir -p "${tftp_path}"
+                mkdir -p "${tftp_path}/pxelinux.cfg"
                 cd "${tftp_path}"
                 extract_live_parts_for_tftp
 
