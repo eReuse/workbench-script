@@ -411,8 +411,7 @@ install_requirements() {
                     squashfs-tools
                     xorriso
                     mtools
-                    dosfstools
-                    nfs-common'
+                    dosfstools'
         # secureboot:
         #   -> extra src https://wiki.debian.org/SecureBoot/
         #   -> extra src https://wiki.debian.org/SecureBoot/VirtualMachine
