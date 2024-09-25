@@ -272,6 +272,10 @@ cd /mnt
 # detect pxe env
 if [ -d /run/live/medium ]; then
         config_path='/run/live/medium/settings.ini'
+        # debian live nfs path is readonly, do a trick
+        #   to make snapshots subdir readwrite
+        nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
+        mount \${nfs_host}:/snapshots /run/live/medium/snapshots
 else
         config_path='/mnt/settings.ini'
 fi

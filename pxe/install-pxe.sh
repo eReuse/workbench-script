@@ -23,9 +23,20 @@ backup_file() {
 
 install_nfs() {
         backup_file /etc/exports
+
+        # debian live nfs path is readonly, do a trick
+        #   to make snapshots subdir readwrite
+        if grep -q "/snapshots" /proc/mounts; then
+                mount --bind "${nfs_path}/snapshots" "/snapshots"
+        fi
+
         cat > /etc/exports <<END
 ${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
+/snapshots ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
 END
+        # reload nfs exports
+        exportfs -vra
+
         # append live directory, which is expected by the debian live env
         mkdir -p "${nfs_path}/live"
         mkdir -p "${nfs_path}/snapshots"
