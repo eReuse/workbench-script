@@ -54,9 +54,9 @@ END
 }
 
 extract_live_parts_for_tftp() {
-        cp -v "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
-        cp -v "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
-        cp -v "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
+        cp -fv "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
+        cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
+        cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
 }
 
 install_netboot() {
