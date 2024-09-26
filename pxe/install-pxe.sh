@@ -27,6 +27,7 @@ install_nfs() {
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
         if ! grep -q "/snapshots" /proc/mounts; then
+                mkdir -p "/snapshots"
                 mount --bind "${nfs_path}/snapshots" "/snapshots"
         fi
 
