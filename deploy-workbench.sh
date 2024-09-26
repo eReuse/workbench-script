@@ -279,8 +279,7 @@ if [ -d /run/live/medium ]; then
         mount --bind /run/live/medium /mnt
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
-        nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
-        mount \${nfs_host}:/snapshots /run/live/medium/snapshots
+        mount ${server_ip}:/snapshots /run/live/medium/snapshots
 else
 fi
 # clearly specify the right working directory, used in the python script as os.getcwd()
