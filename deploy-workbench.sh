@@ -264,7 +264,7 @@ prepare_app() {
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
 if [ -f /tmp/workbench_lock ]; then
-        return
+        exit 0
 else
         touch /tmp/workbench_lock
 fi
@@ -280,7 +280,6 @@ if [ -d /run/live/medium ]; then
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
         mount ${server_ip}:/snapshots /run/live/medium/snapshots
-else
 fi
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
