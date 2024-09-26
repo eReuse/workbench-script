@@ -272,9 +272,9 @@ def save_snapshot_in_disk(snapshot, path):
                 path,
                 datetime.now().strftime("%Y%m%d-%H_%M_%S"),
                 snapshot['uuid'])
-        with open(fallback_filename, "w") as f:
-            f.write(json.dumps(snapshot))
-            print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
+            with open(fallback_filename, "w") as f:
+                f.write(json.dumps(snapshot))
+                print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
         except Exception as e:
             print(f"workbench: ERROR: Failed to write in fallback path: {fallback_error}. Could not save snapshot locally.")
 
