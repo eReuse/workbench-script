@@ -263,26 +263,33 @@ prepare_app() {
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
+if [ -f /tmp/workbench_lock ]; then
+        return
+else
+        touch /tmp/workbench_lock
+fi
+
 set -x
+set -e
 
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
-# clearly specify the right working directory, used in the python script as os.getcwd()
-cd /mnt
 # detect pxe env
 if [ -d /run/live/medium ]; then
-        config_path='/run/live/medium/settings.ini'
+        mount --bind /run/live/medium /mnt
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
         nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
         mount \${nfs_host}:/snapshots /run/live/medium/snapshots
 else
-        config_path='/mnt/settings.ini'
 fi
-pipenv run python /opt/workbench/workbench-script.py --config "\${config_path}"
+# clearly specify the right working directory, used in the python script as os.getcwd()
+cd /mnt
+pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
 stty echo
 
 set +x
+set +e
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
