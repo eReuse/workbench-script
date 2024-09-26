@@ -227,6 +227,8 @@ def smartctl(all_disks, disk=None):
 ## End Command Functions ##
 
 
+# TODO permitir selección
+# TODO permitir que vaya más rápido
 def get_data(all_disks):
     lshw = 'sudo lshw -json'
     hwinfo = 'sudo hwinfo --reallyall'
@@ -340,6 +342,11 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
+
+    # TODO show warning if non root, means data is not complete
+    #   if annotate as potentially invalid snapshot (pending the new API to be done)
+    if os.geteuid() != 0:
+        print("workbench: WARNING: This script must be run as root. Collected data will be incomplete or unusable")
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
