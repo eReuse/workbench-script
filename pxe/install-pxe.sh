@@ -57,6 +57,7 @@ install_tftp() {
         # from https://wiki.debian.org/PXEBootInstall#Simple_way_-_using_Dnsmasq
         cat > /etc/dnsmasq.d/pxe-tftp <<END
 port=0
+# info: https://wiki.archlinux.org/title/Dnsmasq#Proxy_DHCP
 dhcp-range=${nfs_allowed_lan%/*},proxy
 dhcp-boot=pxelinux.0
 pxe-service=x86PC,"Network Boot",pxelinux
