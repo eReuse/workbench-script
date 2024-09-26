@@ -1,5 +1,5 @@
 [settings]
-url = http://127.0.0.1:8000/api/snapshot/
+url = http://localhost:8000/api/snapshot/
 token = '1234'
 # path = /path/to/save
 # device = your_device_name
