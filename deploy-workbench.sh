@@ -263,14 +263,14 @@ prepare_app() {
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
+set -x
+set -e
+
 if [ -f /tmp/workbench_lock ]; then
-        exit 0
+        return 0
 else
         touch /tmp/workbench_lock
 fi
-
-set -x
-set -e
 
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
