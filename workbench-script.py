@@ -276,7 +276,7 @@ def save_snapshot_in_disk(snapshot, path):
                 f.write(json.dumps(snapshot))
                 print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
         except Exception as e:
-            print(f"workbench: ERROR: Failed to write in fallback path: {fallback_filename}. Could not save snapshot locally.")
+            print(f"workbench: ERROR: Failed to write in fallback path: {e}. Could not save snapshot locally.")
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'

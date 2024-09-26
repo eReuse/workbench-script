@@ -264,7 +264,6 @@ prepare_app() {
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
 set -x
-set -e
 
 if [ -f /tmp/workbench_lock ]; then
         return 0
@@ -285,8 +284,8 @@ fi
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
 pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
-stty echo
 
+stty echo
 set +x
 set +e
 END
