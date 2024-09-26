@@ -281,6 +281,8 @@ else
 fi
 pipenv run python /opt/workbench/workbench-script.py --config "\${config_path}"
 stty echo
+
+set +x
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
