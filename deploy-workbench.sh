@@ -263,16 +263,16 @@ prepare_app() {
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
-set -x
-
 if [ -f /tmp/workbench_lock ]; then
         return 0
 else
         touch /tmp/workbench_lock
 fi
 
+set -x
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
+
 # detect pxe env
 if [ -d /run/live/medium ]; then
         mount --bind /run/live/medium /mnt
@@ -287,7 +287,6 @@ pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
 
 stty echo
 set +x
-set +e
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
