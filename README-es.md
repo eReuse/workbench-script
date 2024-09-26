@@ -54,3 +54,9 @@ OPCIONES
 ## Enfoque
 
 workbench-script trata de ser simple y minimalista, una función principal y funciones de soporte la lectura de las diferentes funcionalidades.
+
+## Generar ISO para el USB
+
+Para generar la iso y preparar un usb que arranque con workbench necesitas generarte una workbench de este, con tu configuración específica
+
+Ejecuta `./deploy-workbench.sh`
