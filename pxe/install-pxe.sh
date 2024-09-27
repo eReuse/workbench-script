@@ -114,24 +114,10 @@ install_netboot() {
 
                 ${SUDO} cp /usr/lib/syslinux/memdisk "${tftp_path}/"
                 ${SUDO} cp /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
-                ${SUDO} tee "${tftp_path}/pxelinux.cfg/default" <<END
-DEFAULT menu.c32
-PROMPT 0
-TIMEOUT 50
-ONTIMEOUT wb
-
-MENU TITLE PXE Boot Menu
-
-LABEL wb
-        MENU LABEL Boot Workbench
-        KERNEL vmlinuz
-        INITRD initrd
-        APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
-END
-                cd -
+                envsubst < ./pxe-menu.cfg | ${SUDO} tee "${tftp_path}/pxelinux.cfg/default"
         fi
 
-        rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
+        ${SUDO} rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
 }
 
 init_config() {
@@ -151,8 +137,9 @@ init_config() {
         fi
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
-        server_ip="${server_ip}"
-        nfs_path="${nfs_path:-/srv/pxe-nfs}"
+        # vars used in envsubst require to be exported:
+        export server_ip="${server_ip}"
+        export nfs_path="${nfs_path:-/srv/pxe-nfs}"
 }
 
 main() {
