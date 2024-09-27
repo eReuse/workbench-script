@@ -13,6 +13,22 @@ import requests
 from datetime import datetime
 
 
+## Legacy Functions ##
+def convert_to_legacy_snapshot(snapshot):
+    snapshot["sid"] = str(uuid.uuid4()).split("-")[0]
+    snapshot["software"] = "workbench-script"
+    snapshot["version"] = "dev"
+    snapshot["schema_api"] = "1.0.0"
+    snapshot["settings_version"] = "No Settings Version (NaN)"
+    snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
+    snapshot["data"]["smart"] = snapshot["data"]["disks"]
+    snapshot["data"].pop("disks")
+    snapshot.pop("code")
+    snapshot.pop("erase")
+    
+## End Legacy Functions ##
+
+
 ## Utility Functions ##
 def logs(f):
     def wrapper(*args, **kwargs):
@@ -309,17 +325,19 @@ def load_config(config_file="settings.ini"):
         # TODO validate that the device exists?
         device = config.get('settings', 'device', fallback=None)
         erase = config.get('settings', 'erase', fallback=None)
+        legacy = config.get('settings', 'legacy', fallback=None)
     else:
         print(f"workbench: ERROR: Config file '{config_file}' not found. Using default values.")
         path = os.path.join(os.getcwd())
-        url, token, device, erase = None, None, None, None
+        url, token, device, erase, legacy = None, None, None, None, None
 
     return {
         'path': path,
         'url': url,
         'token': token,
         'device': device,
-        'erase': erase
+        'erase': erase,
+        'legacy': legacy
     }
 
 def parse_args():
@@ -354,11 +372,14 @@ def main():
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
 
-    if config['erase'] and config['device']:
+    if config['erase'] and config['device'] and not config.get("legacy"):
         snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase']:
+    elif config['erase'] and not config.get("legacy"):
         snapshot['erase'] = gen_erase(all_disks, config['erase'])
 
+    if config.get("legacy"):
+        convert_to_legacy_snapshot(snapshot)
+        
     save_snapshot_in_disk(snapshot, config['path'])
 
     if config['url']:
