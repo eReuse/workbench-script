@@ -8,21 +8,46 @@ set -u
 # DEBUG
 set -x
 
+detect_user() {
+        userid="$(id -u)"
+        # detect non root user without sudo
+        if [ ! "${userid}" = 0 ] && id ${USER} | grep -qv sudo; then
+                echo "ERROR: this script needs root or sudo permissions (current user is not part of sudo group)"
+                exit 1
+                # detect user with sudo or already on sudo src https://serverfault.com/questions/568627/can-a-program-tell-it-is-being-run-under-sudo/568628#568628
+        elif [ ! "${userid}" = 0 ] || [ -n "${SUDO_USER}" ]; then
+                SUDO='sudo'
+                # jump to current dir where the script is so relative links work
+                cd "$(dirname "${0}")"
+                # working directory to build the iso
+                ISO_PATH="iso"
+                # detect pure root
+        elif [ "${userid}" = 0 ]; then
+                SUDO=''
+                ISO_PATH="/opt/workbench"
+        fi
+}
+
 install_dependencies() {
-        apt update
-        apt install -y wget dnsmasq nfs-kernel-server rsync
+        ${SUDO} apt update
+        ${SUDO} apt install -y wget dnsmasq nfs-kernel-server rsync syslinux
 }
 
 backup_file() {
         target="${1}"
         ts="$(date +'%Y-%m-%d_%H-%M-%S')"
+
         if [ -f "${target}" ]; then
-                cp -a "${target}" "${target}_bak_${ts}"
+                if ! grep -q 'we should do a backup' "${target}"; then
+                        ${SUDO} cp -a "${target}" "${target}-bak_${ts}"
+                fi
         fi
 }
 
 install_nfs() {
-        backup_file /etc/exports
+        # append live directory, which is expected by the debian live env
+        mkdir -p "${nfs_path}/live"
+        mkdir -p "${nfs_path}/snapshots"
 
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
@@ -31,16 +56,21 @@ install_nfs() {
                 mount --bind "${nfs_path}/snapshots" "/snapshots"
         fi
 
-        cat > /etc/exports <<END
-${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
-/snapshots ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)
+        backup_file /etc/exports
+
+        if [ "${DEBUG:-}" ]; then
+                nfs_debug=' 127.0.0.1(rw,sync,no_subtree_check,no_root_squash,insecure)'
+        fi
+
+        ${SUDO} tee /etc/exports <<END
+${script_header}
+#   we assume that if you remove this line from the file, we should do a backup
+${nfs_path} ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)${nfs_debug:-}
+/snapshots ${nfs_allowed_lan}(rw,sync,no_subtree_check,no_root_squash)${nfs_debug:-}
 END
         # reload nfs exports
-        exportfs -vra
+        ${SUDO} exportfs -vra
 
-        # append live directory, which is expected by the debian live env
-        mkdir -p "${nfs_path}/live"
-        mkdir -p "${nfs_path}/snapshots"
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
                 if [ -f "settings.ini" ]; then
@@ -55,7 +85,8 @@ END
 install_tftp() {
 
         # from https://wiki.debian.org/PXEBootInstall#Simple_way_-_using_Dnsmasq
-        cat > /etc/dnsmasq.d/pxe-tftp <<END
+        ${SUDO} tee /etc/dnsmasq.d/pxe-tftp <<END
+${script_header}
 port=0
 # info: https://wiki.archlinux.org/title/Dnsmasq#Proxy_DHCP
 dhcp-range=${nfs_allowed_lan%/*},proxy
@@ -78,25 +109,39 @@ install_netboot() {
                         mkdir -p "${tftp_path}/pxelinux.cfg"
                 fi
 
-                cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
-                cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
-                rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
+                ${SUDO} cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
+                ${SUDO} cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
 
-                cat > "${tftp_path}/pxelinux.cfg/default" <<END
-default wb
+                ${SUDO} cp /usr/lib/syslinux/memdisk "${tftp_path}/"
+                ${SUDO} cp /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
+                ${SUDO} tee "${tftp_path}/pxelinux.cfg/default" <<END
+DEFAULT menu.c32
+PROMPT 0
+TIMEOUT 50
+ONTIMEOUT wb
 
-label wb
+MENU TITLE PXE Boot Menu
+
+LABEL wb
+        MENU LABEL Boot Workbench
         KERNEL vmlinuz
         INITRD initrd
         APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae
 END
                 cd -
         fi
+
+        rsync -av "${PXE_DIR}/../iso/staging/live/filesystem.squashfs" "${nfs_path}/live/"
 }
 
 init_config() {
+
         # get where the script is
         cd "$(dirname "${0}")"
+
+        # this is what we put in the files we modity
+        script_header='# configuration done through workbench install-pxe script'
+
         PXE_DIR="$(pwd)"
 
         if [ -f ./.env ]; then
@@ -111,6 +156,7 @@ init_config() {
 }
 
 main() {
+        detect_user
         init_config
         install_dependencies
         install_tftp

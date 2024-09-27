@@ -198,9 +198,9 @@ create_persistence_partition() {
                 ${SUDO} umount -f -l "${tmp_rw_mount}" >/dev/null 2>&1 || true
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
-                ${SUDO} mkdir -p "${tmp_rw_mount}/settings"
+                ${SUDO} mkdir -p "${tmp_rw_mount}"
                 if [ -f "settings.ini" ]; then
-                        ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings/settings.ini"
+                        ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings.ini"
                 else
                         echo "ERROR: settings.ini does not exist yet, cannot read config from there. You can take inspiration with file settings.ini.example"
                         exit 1
@@ -274,11 +274,11 @@ stty -echo # Do not show what we type in terminal so it does not meddle with our
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 
 # detect pxe env
-if [ -d /run/live/medium ]; then
+nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
+if [ "\${nfs_host}" ]; then
         mount --bind /run/live/medium /mnt
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
-        nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
         mount \${nfs_host}:/snapshots /run/live/medium/snapshots
         # reload mounts on systemd
         systemctl daemon-reload
