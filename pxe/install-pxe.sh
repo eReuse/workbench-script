@@ -46,14 +46,14 @@ backup_file() {
 
 install_nfs() {
         # append live directory, which is expected by the debian live env
-        mkdir -p "${nfs_path}/live"
-        mkdir -p "${nfs_path}/snapshots"
+        ${SUDO} mkdir -p "${nfs_path}/live"
+        ${SUDO} mkdir -p "${nfs_path}/snapshots"
 
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
         if ! grep -q "/snapshots" /proc/mounts; then
-                mkdir -p "/snapshots"
-                mount --bind "${nfs_path}/snapshots" "/snapshots"
+                ${SUDO} mkdir -p "/snapshots"
+                ${SUDO} mount --bind "${nfs_path}/snapshots" "/snapshots"
         fi
 
         backup_file /etc/exports
@@ -74,7 +74,7 @@ END
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
                 if [ -f "settings.ini" ]; then
-                        cp settings.ini "${nfs_path}/settings.ini"
+                        ${SUDO} cp settings.ini "${nfs_path}/settings.ini"
                 else
                         echo "ERROR: $(pwd)/settings.ini does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/settings.ini.example"
                         exit 1
@@ -100,13 +100,13 @@ END
 install_netboot() {
         # if you want to refresh install, remove or move dir
         if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
-                mkdir -p "${tftp_path}/pxelinux.cfg"
-                cd "${tftp_path}"
+                ${SUDO} mkdir -p "${tftp_path}/pxelinux.cfg"
                 if [ ! -f "${tftp_path}/netboot.tar.gz" ]; then
-                        wget http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz
-                        tar xvf netboot.tar.gz || true
-                        rm -rf "${tftp_path}/pxelinux.cfg"
-                        mkdir -p "${tftp_path}/pxelinux.cfg"
+                        url="http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz"
+                        ${SUDO} wget -P "${tftp_path}" "${url}"
+                        ${SUDO} tar xvf "${tftp_path}/netboot.tar.gz" -C "${tftp_path}"
+                        ${SUDO} rm -rf "${tftp_path}/pxelinux.cfg"
+                        ${SUDO} mkdir -p "${tftp_path}/pxelinux.cfg"
                 fi
 
                 ${SUDO} cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
