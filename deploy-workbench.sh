@@ -280,6 +280,8 @@ if [ -d /run/live/medium ]; then
         #   to make snapshots subdir readwrite
         nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
         mount \${nfs_host}:/snapshots /run/live/medium/snapshots
+        # reload mounts on systemd
+        systemctl daemon-reload
 fi
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
