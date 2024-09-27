@@ -288,8 +288,8 @@ def send_snapshot_to_devicehub(snapshot, token, url):
     try:
         requests.post(url, data=json.dumps(snapshot), headers=headers)
         print(f"workbench: INFO: Snapshot sent to '{url}'")
-    except:
-        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?")
+    except Exception as e:
+        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
 
 def load_config(config_file="settings.ini"):
     """
