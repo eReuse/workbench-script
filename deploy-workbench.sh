@@ -303,7 +303,7 @@ apt-get install -y --no-install-recommends \
   python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw < /dev/null
   # Install python requirements using apt instead of pip
-  #python3-dateutils python3-decouple python3-colorlog
+  #python3-dateutils python3-decouple python3-colorlog nfs-common
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
 #apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
@@ -427,8 +427,7 @@ install_requirements() {
                     squashfs-tools
                     xorriso
                     mtools
-                    dosfstools
-                    nfs-common'
+                    dosfstools'
         # secureboot:
         #   -> extra src https://wiki.debian.org/SecureBoot/
         #   -> extra src https://wiki.debian.org/SecureBoot/VirtualMachine
