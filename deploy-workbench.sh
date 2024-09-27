@@ -303,9 +303,7 @@ echo 'Install requirements'
 apt-get install -y --no-install-recommends \
   sudo \
   python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw < /dev/null
-  # Install python requirements using apt instead of pip
-  #python3-dateutils python3-decouple python3-colorlog nfs-common
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
 #apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
