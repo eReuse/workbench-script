@@ -2,4 +2,3 @@ iso
 settings.ini
 # ignore all possible snapshots in this repo
 *.json
-pxe/.env
