@@ -98,7 +98,7 @@ LABEL linux
 END
 )"
         #   TIMEOUT 60 means 6 seconds :)
-        sudo tee "${ISO_PATH}/staging/isolinux/isolinux.cfg" <<EOF
+        ${SUDO} tee "${ISO_PATH}/staging/isolinux/isolinux.cfg" <<EOF
 ${isolinuxcfg_str}
 EOF
         ${SUDO} cp /usr/lib/ISOLINUX/isolinux.bin "${ISO_PATH}/staging/isolinux/"
@@ -188,8 +188,9 @@ create_persistence_partition() {
         # persistent partition
         rw_img_name="workbench_vfat.img"
         rw_img_path="${ISO_PATH}/staging/${rw_img_name}"
-        if [ ! -f "${rw_img_path}" ] || [ "${DEBUG:-}" ]; then
-                ${SUDO} dd if=/dev/zero of="${rw_img_path}" bs=10M count=1
+        if [ ! -f "${rw_img_path}" ] || [ "${DEBUG:-}" ] || [ "${FORCE:-}" ]; then
+                persistent_volume_size_MB=100
+                ${SUDO} dd if=/dev/zero of="${rw_img_path}" bs=1M count=${persistent_volume_size_MB}
                 ${SUDO} mkfs.vfat "${rw_img_path}"
 
                 # generate structure on persistent partition
@@ -198,17 +199,7 @@ create_persistence_partition() {
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
                 ${SUDO} mkdir -p "${tmp_rw_mount}/settings"
-                # TODO without SUDO fails
-                ${SUDO} cat > "${tmp_rw_mount}/settings/settings.ini" <<END
-[settings]
-
-DH_TOKEN =
-DH_URL =
-
-SNAPSHOTS_PATH = /mnt
-LOGS_PATH = /mnt
-VERSION =
-END
+                ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings/settings.ini"
                 ${SUDO} umount "${tmp_rw_mount}"
 
                 uuid="$(blkid "${rw_img_path}" | awk '{ print $3; }')"
@@ -249,7 +240,7 @@ END2
 ###################
 # configure hosts
 cat > /etc/hosts <<END2
-127.0.0.1    localhost \${hostname}
+127.0.0.1    localhost workbench
 ::1          localhost ip6-localhost ip6-loopback
 ff02::1      ip6-allnodes
 ff02::2      ip6-allrouters
@@ -261,8 +252,9 @@ prepare_app() {
         # prepare app during prepare_chroot_env
         # Install hardware_metadata module
         workbench_dir="${ISO_PATH}/chroot/opt/workbench"
-        ${SUDO} cp workbench-script.py "${workbench_dir}"
-        ${SUDO} cp requirements.txt "${workbench_dir}"
+        ${SUDO} mkdir -p "${workbench_dir}"
+        ${SUDO} cp workbench-script.py "${workbench_dir}/"
+        ${SUDO} cp requirements.txt "${workbench_dir}/"
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
@@ -272,7 +264,7 @@ stty -echo # Do not show what we type in terminal so it does not meddle with our
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
-pipenv run python /opt/workbench/workbench-script.py
+pipenv run python /opt/workbench/workbench-script.py --config "/mnt/settings/settings.ini"
 stty echo
 END
         #TODO add some useful commands
@@ -286,6 +278,7 @@ echo 'Install requirements'
 
 # Install debian requirements
 apt-get install -y --no-install-recommends \
+  sudo \
   python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw < /dev/null
   # Install python requirements using apt instead of pip
@@ -312,7 +305,7 @@ run_chroot() {
 set -x
 set -e
 
-echo "${hostname}" > /etc/hostname
+echo workbench > /etc/hostname
 
 # check what linux images are available on the system
 # Figure out which Linux Kernel you want in the live environment.
@@ -389,6 +382,11 @@ prepare_chroot_env() {
         if [ -z "${VERSION_CODENAME:-}" ]; then
                 . /etc/os-release
                 echo "TAKING OS-RELEASE FILE"
+                if [ ! "${ID}" = "debian" ]; then
+                        echo "ERROR: ubuntu detected, then you are enforced to specify debian variant"
+                        echo "  use for example \`VERSION_CODENAME='bookworm'\` or similar"
+                        exit 1
+                fi
         fi
 
         chroot_path="${ISO_PATH}/chroot"
