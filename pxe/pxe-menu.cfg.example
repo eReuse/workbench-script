@@ -1,0 +1,12 @@
+DEFAULT menu.c32
+PROMPT 0
+TIMEOUT 50
+ONTIMEOUT wb
+
+MENU TITLE PXE Boot Menu
+
+LABEL wb
+        MENU LABEL Boot Workbench
+        KERNEL vmlinuz
+        INITRD initrd
+        APPEND ip=dhcp netboot=nfs nfsroot=${server_ip}:${nfs_path}/ boot=live text forcepae

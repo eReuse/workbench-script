@@ -34,12 +34,12 @@ END
 
 create_iso() {
         # Copy kernel and initramfs
-        vmlinuz="$(ls -1v ${ISO_PATH}/chroot/boot/vmlinuz-* | tail -n 1)"
-        initrd="$(ls -1v ${ISO_PATH}/chroot/boot/initrd.img-* | tail -n 1)"
-        ${SUDO} cp ${vmlinuz} ${ISO_PATH}/staging/live/vmlinuz
-        ${SUDO} cp ${initrd} ${ISO_PATH}/staging/live/initrd
+        vmlinuz="$(ls -1v "${ISO_PATH}"/chroot/boot/vmlinuz-* | tail -n 1)"
+        initrd="$(ls -1v "${ISO_PATH}"/chroot/boot/initrd.img-* | tail -n 1)"
+        ${SUDO} cp ${vmlinuz} "${ISO_PATH}"/staging/live/vmlinuz
+        ${SUDO} cp ${initrd} "${ISO_PATH}"/staging/live/initrd
         # Creating ISO
-        iso_path="${ISO_PATH}/${iso_name}.iso"
+        iso_path=""${ISO_PATH}"/${iso_name}.iso"
 
         # 0x14 is FAT16 Hidden FAT16 <32, this is the only format detected in windows10 automatically when using a persistent volume of 10 MB
         ${SUDO} xorrisofs \
@@ -59,7 +59,7 @@ create_iso() {
                 -e /EFI/boot/efiboot.img \
                 -no-emul-boot \
                 -isohybrid-gpt-basdat \
-                -append_partition 2 0xef ${ISO_PATH}/staging/EFI/boot/efiboot.img \
+                -append_partition 2 0xef "${ISO_PATH}"/staging/EFI/boot/efiboot.img \
                 -append_partition 3 0x14 "${rw_img_path}" \
                 "${ISO_PATH}/staging"
 
@@ -138,7 +138,7 @@ EOF
 
         ${SUDO} grub-mkstandalone \
                 --format=x86_64-efi \
-                --output=${ISO_PATH}/tmp/bootx64.efi \
+                --output="${ISO_PATH}"/tmp/bootx64.efi \
                 --locales="" \
                 --fonts="" \
                 "boot/grub/grub.cfg=${ISO_PATH}/tmp/grub-standalone.cfg"
@@ -149,10 +149,10 @@ EOF
   #   grubx64 looks for a file in /EFI/debian/grub.cfg -> src src https://unix.stackexchange.com/questions/648089/uefi-grub-not-finding-config-file
         ${SUDO} cp /usr/lib/shim/shimx64.efi.signed /tmp/bootx64.efi
         ${SUDO} cp /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed /tmp/grubx64.efi
-        ${SUDO} cp ${ISO_PATH}/tmp/grub-standalone.cfg ${ISO_PATH}/staging/EFI/debian/grub.cfg
+        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" "${ISO_PATH}/staging/EFI/debian/grub.cfg"
 
         (
-                cd ${ISO_PATH}/staging/EFI/boot
+                cd "${ISO_PATH}/staging/EFI/boot"
                 ${SUDO} dd if=/dev/zero of=efiboot.img bs=1M count=20
                 ${SUDO} mkfs.vfat efiboot.img
                 ${SUDO} mmd -i efiboot.img efi efi/boot
@@ -178,8 +178,8 @@ compress_chroot_dir() {
         # why squashfs -> https://unix.stackexchange.com/questions/163190/why-do-liveusbs-use-squashfs-and-similar-file-systems
         # noappend option needed to avoid this situation -> https://unix.stackexchange.com/questions/80447/merging-preexisting-source-folders-in-mksquashfs
         ${SUDO} mksquashfs \
-                ${ISO_PATH}/chroot \
-                ${ISO_PATH}/staging/live/filesystem.squashfs \
+                "${ISO_PATH}/chroot" \
+                "${ISO_PATH}/staging/live/filesystem.squashfs" \
                 ${DEBUG_SQUASHFS_ARGS:-} \
                 -noappend -e boot
 }
@@ -198,8 +198,13 @@ create_persistence_partition() {
                 ${SUDO} umount -f -l "${tmp_rw_mount}" >/dev/null 2>&1 || true
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
-                ${SUDO} mkdir -p "${tmp_rw_mount}/settings"
-                ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings/settings.ini"
+                ${SUDO} mkdir -p "${tmp_rw_mount}"
+                if [ -f "settings.ini" ]; then
+                        ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings.ini"
+                else
+                        echo "ERROR: settings.ini does not exist yet, cannot read config from there. You can take inspiration with file settings.ini.example"
+                        exit 1
+                fi
                 ${SUDO} umount "${tmp_rw_mount}"
 
                 uuid="$(blkid "${rw_img_path}" | awk '{ print $3; }')"
@@ -258,14 +263,32 @@ prepare_app() {
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
-set -x
+if [ -f /tmp/workbench_lock ]; then
+        return 0
+else
+        touch /tmp/workbench_lock
+fi
 
+set -x
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
+
+# detect pxe env
+nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
+if [ "\${nfs_host}" ]; then
+        mount --bind /run/live/medium /mnt
+        # debian live nfs path is readonly, do a trick
+        #   to make snapshots subdir readwrite
+        mount \${nfs_host}:/snapshots /run/live/medium/snapshots
+        # reload mounts on systemd
+        systemctl daemon-reload
+fi
 # clearly specify the right working directory, used in the python script as os.getcwd()
 cd /mnt
-pipenv run python /opt/workbench/workbench-script.py --config "/mnt/settings/settings.ini"
+pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+
 stty echo
+set +x
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
@@ -280,9 +303,7 @@ echo 'Install requirements'
 apt-get install -y --no-install-recommends \
   sudo \
   python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw < /dev/null
-  # Install python requirements using apt instead of pip
-  #python3-dateutils python3-decouple python3-colorlog
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
 #apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
@@ -405,7 +426,8 @@ install_requirements() {
         image_deps='debootstrap
                     squashfs-tools
                     xorriso
-                    mtools'
+                    mtools
+                    dosfstools'
         # secureboot:
         #   -> extra src https://wiki.debian.org/SecureBoot/
         #   -> extra src https://wiki.debian.org/SecureBoot/VirtualMachine
@@ -423,17 +445,17 @@ install_requirements() {
 
 # thanks https://willhaley.com/blog/custom-debian-live-environment/
 create_base_dirs() {
-        mkdir -p ${ISO_PATH}
-        mkdir -p ${ISO_PATH}/staging/EFI/boot
-        mkdir -p ${ISO_PATH}/staging/boot/grub/x86_64-efi
-        mkdir -p ${ISO_PATH}/staging/isolinux
-        mkdir -p ${ISO_PATH}/staging/live
-        mkdir -p ${ISO_PATH}/tmp
+        mkdir -p "${ISO_PATH}"
+        mkdir -p "${ISO_PATH}/staging/EFI/boot"
+        mkdir -p "${ISO_PATH}/staging/boot/grub/x86_64-efi"
+        mkdir -p "${ISO_PATH}/staging/isolinux"
+        mkdir -p "${ISO_PATH}/staging/live"
+        mkdir -p "${ISO_PATH}/tmp"
         # usb name
-        ${SUDO} touch ${ISO_PATH}/staging/${iso_name}
+        ${SUDO} touch "${ISO_PATH}/staging/${iso_name}"
 
         # for uefi secure boot grub config file
-        mkdir -p ${ISO_PATH}/staging/EFI/debian
+        mkdir -p "${ISO_PATH}/staging/EFI/debian"
 }
 
 # this function is used both in shell and chroot

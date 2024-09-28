@@ -1,4 +1,4 @@
 iso
 settings.ini
-# ignore all possible snapshots in this dir
+# ignore all possible snapshots in this repo
 *.json

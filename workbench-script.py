@@ -7,7 +7,6 @@ import hashlib
 import argparse
 import configparser
 
-import ntplib
 import requests
 
 
@@ -228,6 +227,8 @@ def smartctl(all_disks, disk=None):
 ## End Command Functions ##
 
 
+# TODO permitir selección
+# TODO permitir que vaya más rápido
 def get_data(all_disks):
     lshw = 'sudo lshw -json'
     hwinfo = 'sudo hwinfo --reallyall'
@@ -249,15 +250,33 @@ def gen_snapshot(all_disks):
 
 
 def save_snapshot_in_disk(snapshot, path):
-    filename = "{}/{}_{}.json".format(
-        path,
-        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
-        snapshot['uuid']
-    )
-    print(f"workbench: INFO: Snapshot written in path '{filename}'")
-    with open(filename, "w") as f:
-        f.write(json.dumps(snapshot))
+    snapshot_path = os.path.join(path, 'snapshots')
 
+    filename = "{}/{}_{}.json".format(
+        snapshot_path,
+        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+        snapshot['uuid'])
+
+    try:
+        if not os.path.exists(snapshot_path):
+            os.makedirs(snapshot_path)
+            print(f"workbench: INFO: Created snapshots directory at '{snapshot_path}'")
+
+        with open(filename, "w") as f:
+            f.write(json.dumps(snapshot))
+        print(f"workbench: INFO: Snapshot written in path '{filename}'")
+    except Exception as e:
+        try:
+            print(f"workbench: WARNING: Attempting to save in actual path. Reason: Failed to write in snapshots directory:\n    {e}.")
+            fallback_filename = "{}/{}_{}.json".format(
+                path,
+                datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+                snapshot['uuid'])
+            with open(fallback_filename, "w") as f:
+                f.write(json.dumps(snapshot))
+                print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
+        except Exception as e:
+            print(f"workbench: ERROR: Could not save snapshot locally. Reason: Failed to write in fallback path:\n    {e}")
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
@@ -269,14 +288,8 @@ def send_snapshot_to_devicehub(snapshot, token, url):
     try:
         requests.post(url, data=json.dumps(snapshot), headers=headers)
         print(f"workbench: INFO: Snapshot sent to '{url}'")
-    except:
-        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?")
-
-@logs
-def sync_time():
-    # is neccessary?
-    ntplib.NTPClient()
-    response = client.request('pool.ntp.org')
+    except Exception as e:
+        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
 
 def load_config(config_file="settings.ini"):
     """
@@ -332,6 +345,11 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
+
+    # TODO show warning if non root, means data is not complete
+    #   if annotate as potentially invalid snapshot (pending the new API to be done)
+    if os.geteuid() != 0:
+        print("workbench: WARNING: This script must be run as root. Collected data will be incomplete or unusable")
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)

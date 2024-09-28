@@ -1,6 +1,6 @@
 [settings]
 url = http://localhost:8000/api/snapshot/
 token = '1234'
-# path = /path/to/save
+path = /mnt
 # device = your_device_name
 # # erase = basic
