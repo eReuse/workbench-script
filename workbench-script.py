@@ -302,8 +302,12 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         "Content-Type": "application/json"
     }
     try:
-        requests.post(url, data=json.dumps(snapshot), headers=headers)
-        print(f"workbench: INFO: Snapshot sent to '{url}'")
+        response = requests.post(url, data=json.dumps(snapshot), headers=headers)
+        if response.status_code == 200:
+            print(f"workbench: INFO: Snapshot successfully sent to '{url}'")
+        else:
+            raise Exception(f"workbench: ERROR: Failed to send snapshot. HTTP {response.status_code}: {response.text}")
+
     except Exception as e:
         print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
 
