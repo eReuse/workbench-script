@@ -230,7 +230,7 @@ def exec_smart(disk):
 def smartctl(all_disks, disk=None):
 
     if disk:
-        return exec_smart(disk)
+        return [exec_smart(disk)]
 
     data_list = []
     for disk in all_disks:
@@ -250,7 +250,7 @@ def get_data(all_disks):
     hwinfo = 'sudo hwinfo --reallyall'
     dmidecode = 'sudo dmidecode'
     data = {
-        'lshw': exec_cmd(lshw),
+        'lshw': json.loads(exec_cmd(lshw) or "{}"),
         'disks': smartctl(all_disks),
         'hwinfo': exec_cmd(hwinfo),
         'dmidecode': exec_cmd(dmidecode)
@@ -298,7 +298,7 @@ def save_snapshot_in_disk(snapshot, path):
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
 def send_snapshot_to_devicehub(snapshot, token, url):
     headers = {
-        f"Authorization": "Basic {token}",
+        "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
     try:
