@@ -306,7 +306,21 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         if response.status_code == 200:
             print(f"workbench: INFO: Snapshot successfully sent to '{url}'")
         else:
-            raise Exception(f"workbench: ERROR: Failed to send snapshot. HTTP {response.status_code}: {response.text}")
+            txt = "workbench: ERROR: Failed to send snapshot. HTTP {}: {}".format(
+                response.status_code,
+                response.text
+            )
+            raise Exception(txt)
+
+        try:
+            res = json.loads(response.text)
+            if res.get('public_url'):
+                qr = "echo {} | qrencode -t ANSI".format(res['public_url'])
+                print(exec_cmd(qr))
+            if res.get("dhid"):
+                print(res['dhid'])
+        except Exception:
+            print(response.text)
 
     except Exception as e:
         print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
