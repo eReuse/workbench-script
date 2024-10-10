@@ -249,11 +249,13 @@ def get_data(all_disks):
     lshw = 'sudo lshw -json'
     hwinfo = 'sudo hwinfo --reallyall'
     dmidecode = 'sudo dmidecode'
+    lspci = 'sudo lspci -vv'
     data = {
         'lshw': json.loads(exec_cmd(lshw) or "{}"),
         'disks': smartctl(all_disks),
         'hwinfo': exec_cmd(hwinfo),
-        'dmidecode': exec_cmd(dmidecode)
+        'dmidecode': exec_cmd(dmidecode),
+        'lspci': exec_cmd(lspci)
     }
 
     return data
