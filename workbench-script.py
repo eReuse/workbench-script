@@ -303,7 +303,7 @@ def send_snapshot_to_devicehub(snapshot, token, url):
     }
     try:
         response = requests.post(url, data=json.dumps(snapshot), headers=headers)
-        if response.status_code == 200:
+        if 200 <= response.status_code < 300:
             print(f"workbench: INFO: Snapshot successfully sent to '{url}'")
         else:
             txt = "workbench: ERROR: Failed to send snapshot. HTTP {}: {}".format(
