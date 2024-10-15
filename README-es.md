@@ -30,26 +30,11 @@ Comentarios sobre el borrado:
 
 ## Uso del script
 
-Detalles del uso del script para los técnicos
+Detalles del uso del script para técnicos
 
-```
-workbench.py [-h] -p PATH [-u URL] [-t TOKEN] [-d DEVICE] [-e {basic,baseline,enhanced}]
+El script está diseñado para funcionar por defecto de forma intuitiva y sin configuración previa
 
-OPCIONES
-
-    El -p es el unico que es obligatorio el resto son opcionales. Si no pones -e no borra.
-
-    -p path
-        deja el snapshot en el dir path (tal como /mnt)
-
-    -e tipo-borrado
-        tipo de borrado de disco: basic, baseline, enhanced. Nota: bueno si pones -e tampoco borra porque hay que cambiar el script pero es descomentar unas lineas y ya.
-
-    -d device
-        le dices que device quieres borrar y depende de -e que defines el tipo de borrado. Nota: si no le dices -d y solo usas -e borrara todo lo que pille, menos el de boot como dijimos (no probado)
-
-    -u tiene que ir con -t y se usa para enviar a una direccion con su token (no probado)
-```
+Se puede especificar un fichero de configuración con el argumento `--config`, y en `settings.ini.example` se puede encontrar un ejemplo de configuración
 
 ## Enfoque
 
