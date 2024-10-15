@@ -6,9 +6,7 @@ import uuid
 import hashlib
 import argparse
 import configparser
-
-import requests
-
+import urllib.request
 
 from datetime import datetime
 
@@ -304,25 +302,32 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         "Content-Type": "application/json"
     }
     try:
-        response = requests.post(url, data=json.dumps(snapshot), headers=headers)
-        if 200 <= response.status_code < 300:
+        data = json.dumps(snapshot).encode('utf-8')
+        request = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(request) as response:
+            status_code = response.getcode()
+            response_text = response.read().decode('utf-8')
+
+        if 200 <= status_code < 300:
             print(f"workbench: INFO: Snapshot successfully sent to '{url}'")
         else:
             txt = "workbench: ERROR: Failed to send snapshot. HTTP {}: {}".format(
-                response.status_code,
-                response.text
+                status_code,
+                response_text
             )
             raise Exception(txt)
 
         try:
-            res = json.loads(response.text)
-            if res.get('public_url'):
-                qr = "echo {} | qrencode -t ANSI".format(res['public_url'])
+            response = json.loads(response_text)
+            if response.get('public_url'):
+                # apt install qrencode
+                qr = "echo {} | qrencode -t ANSI".format(response['public_url'])
                 print(exec_cmd(qr))
-            if res.get("dhid"):
-                print(res['dhid'])
+                print("public_url: {}".format(response['public_url']))
+            if response.get("dhid"):
+                print("dhid: {}".format(response['dhid']))
         except Exception:
-            print(response.text)
+            print(response_text)
 
     except Exception as e:
         print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
