@@ -255,11 +255,10 @@ END
 
 prepare_app() {
         # prepare app during prepare_chroot_env
-        # Install hardware_metadata module
         workbench_dir="${ISO_PATH}/chroot/opt/workbench"
         ${SUDO} mkdir -p "${workbench_dir}"
         ${SUDO} cp workbench-script.py "${workbench_dir}/"
-        ${SUDO} cp requirements.txt "${workbench_dir}/"
+        ${SUDO} cp -arp locale "${workbench_dir}/"
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
@@ -301,7 +300,7 @@ echo 'Install requirements'
 
 # Install debian requirements
 apt-get install -y --no-install-recommends \
-  sudo \
+  sudo locales \
   python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
 
@@ -355,6 +354,13 @@ apt-get install -y --no-install-recommends \
 # Install app
 ${install_app_str}
 
+# thanks src https://serverfault.com/questions/362903/how-do-you-set-a-locale-non-interactively-on-debian-ubuntu
+export LANG=${LANG}
+export LC_ALL=${LANG}
+# this is a high level command that does locale-gen and update-locale altogether
+dpkg-reconfigure --frontend=noninteractive locales
+locale -a
+
 # Autologin root user
 # src https://wiki.archlinux.org/title/getty#Automatic_login_to_virtual_console
 mkdir -p /etc/systemd/system/getty@tty1.service.d/
@@ -396,6 +402,7 @@ CHROOT
 }
 
 prepare_chroot_env() {
+        LANG="${CUSTOM_LANG:-es_ES.UTF-8}"
         # version of debian the bootstrap is going to build
         #   if no VERSION_CODENAME is specified we assume that the bootstrap is going to
         #   be build with the same version of debian being executed because some files

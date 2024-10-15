@@ -43,3 +43,15 @@ boot_iso_uefi_secureboot:
 		-enable-kvm -m 2G -vga qxl -netdev user,id=wan -device virtio-net,netdev=wan,id=nic1 \
 		-drive file=deploy/iso/workbench_debug.iso,cache=none,if=virtio,format=raw,index=0,media=disk \
 		-boot menu=on
+
+es_gen_po:
+	cp locale/es/LC_MESSAGES/messages.po locale/es/LC_MESSAGES/messages.pot.bak
+	pygettext3 -p locale/es/LC_MESSAGES/ workbench-script.py
+	# src https://stackoverflow.com/questions/7496156/gettext-how-to-update-po-and-pot-files-after-the-source-is-modified
+	msgmerge -N locale/es/LC_MESSAGES/messages.pot.bak locale/es/LC_MESSAGES/messages.pot > locale/es/LC_MESSAGES/messages.po
+	rm locale/es/LC_MESSAGES/messages.pot.bak
+	rm locale/es/LC_MESSAGES/messages.pot
+
+
+es_gen_mo:
+	msgfmt locale/es/LC_MESSAGES/messages.po -o locale/es/LC_MESSAGES/messages.mo

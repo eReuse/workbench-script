@@ -8,6 +8,10 @@ import argparse
 import configparser
 import urllib.request
 
+import gettext
+import locale
+import logging
+
 from datetime import datetime
 
 
@@ -33,7 +37,7 @@ def logs(f):
         try:
             return f(*args, **kwargs)
         except Exception as err:
-            print(err)
+            logger.error(err)
             return ''
 
     return wrapper
@@ -41,12 +45,12 @@ def logs(f):
 
 @logs
 def exec_cmd(cmd):
-    print(f'workbench: INFO: running command `{cmd}`')
+    logger.info(_('Running command `%s`'), cmd)
     return os.popen(cmd).read()
 
 @logs
 def exec_cmd_erase(cmd):
-    print(cmd)
+    logger.info(_('Running command `%s`'), cmd)
     return ''
     # return os.popen(cmd).read()
 
@@ -277,23 +281,22 @@ def save_snapshot_in_disk(snapshot, path):
     try:
         if not os.path.exists(snapshot_path):
             os.makedirs(snapshot_path)
-            print(f"workbench: INFO: Created snapshots directory at '{snapshot_path}'")
-
+            logger.info(_("Created snapshots directory at '%s'"), snapshot_path)
         with open(filename, "w") as f:
             f.write(json.dumps(snapshot))
-        print(f"workbench: INFO: Snapshot written in path '{filename}'")
+        logger.info(_("Snapshot written in path '%s'"), filename)
     except Exception as e:
         try:
-            print(f"workbench: WARNING: Attempting to save in actual path. Reason: Failed to write in snapshots directory:\n    {e}.")
+            logger.warning(_("Attempting to save file in actual path. Reason: Failed to write in snapshots directory:\n    %s."), e)
             fallback_filename = "{}/{}_{}.json".format(
                 path,
                 datetime.now().strftime("%Y%m%d-%H_%M_%S"),
                 snapshot['uuid'])
             with open(fallback_filename, "w") as f:
                 f.write(json.dumps(snapshot))
-                print(f"workbench: INFO: Snapshot written in fallback path '{fallback_filename}'")
+                logger.warning(_("Snapshot written in fallback path '%s'"), fallback_filename)
         except Exception as e:
-            print(f"workbench: ERROR: Could not save snapshot locally. Reason: Failed to write in fallback path:\n    {e}")
+            logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
@@ -310,13 +313,7 @@ def send_snapshot_to_devicehub(snapshot, token, url):
             response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
-            print(f"workbench: INFO: Snapshot successfully sent to '{url}'")
-        else:
-            txt = "workbench: ERROR: Failed to send snapshot. HTTP {}: {}".format(
-                status_code,
-                response_text
-            )
-            raise Exception(txt)
+            logger.info(_("Snapshot successfully sent to '%s'"), url)
 
         try:
             response = json.loads(response_text)
@@ -328,10 +325,10 @@ def send_snapshot_to_devicehub(snapshot, token, url):
             if response.get("dhid"):
                 print("dhid: {}".format(response['dhid']))
         except Exception:
-            print(response_text)
+            logger.error(response_text)
 
     except Exception as e:
-        print(f"workbench: ERROR: Snapshot not remotely sent to URL '{url}'. Do you have internet? Is your server up & running? Is the url token authorized?\n    {e}")
+        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
 def load_config(config_file="settings.ini"):
     """
@@ -342,7 +339,7 @@ def load_config(config_file="settings.ini"):
     if os.path.exists(config_file):
         # If config file exists, read from it
 
-        print(f"workbench: INFO: Found config file in path: '{config_file}'.")
+        logger.info(_("Found config file in path: %s."), config_file)
         config.read(config_file)
         path = config.get('settings', 'path', fallback=os.getcwd())
         # TODO validate that has http:// start
@@ -353,7 +350,7 @@ def load_config(config_file="settings.ini"):
         erase = config.get('settings', 'erase', fallback=None)
         legacy = config.get('settings', 'legacy', fallback=None)
     else:
-        print(f"workbench: ERROR: Config file '{config_file}' not found. Using default values.")
+        logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
         url, token, device, erase, legacy = None, None, None, None, None
 
@@ -370,17 +367,45 @@ def parse_args():
     """
     Parse config argument, if available
     """
-    parser = argparse.ArgumentParser(description="Optional config loader for workbench.")
+    parser = argparse.ArgumentParser(
+        usage=_("workbench-script.py [-h] [--config CONFIG]"),
+        description=_("Optional config loader for workbench."))
     parser.add_argument(
         '--config',
-        help="Path to the config file. Defaults to 'settings.ini' in the current directory.",
+        help=_("path to the config file. Defaults to 'settings.ini' in the current directory."),
         default="settings.ini"  # Fallback to 'settings.ini' by default
     )
     return parser.parse_args()
 
+def prepare_lang():
+    locale_path = os.path.join(os.path.dirname(__file__), 'locale')
+    domain = 'messages'
+    gettext.bindtextdomain(domain, locale_path)
+    gettext.textdomain(domain)
+    global _
+    # with LANG=es_ES.UTF-8, it detects spanish
+    _ = gettext.gettext
+    # # this would force it to spanish
+    # lang = gettext.translation(domain, localedir=locale_path, languages=['es'])
+    # lang.install()
+    # _ = lang.gettext
+
+def prepare_logger():
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s] workbench: %(levelname)s: %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+
 def main():
-    vline='\n___________\n\n'
-    print(f"{vline}workbench: START\n")
+    prepare_lang()
+    prepare_logger()
+
+    logger.info(_("START"))
 
     # Parse the command-line arguments
     args = parse_args()
@@ -393,7 +418,7 @@ def main():
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
     if os.geteuid() != 0:
-        print("workbench: WARNING: This script must be run as root. Collected data will be incomplete or unusable")
+        logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
@@ -405,13 +430,13 @@ def main():
 
     if config.get("legacy"):
         convert_to_legacy_snapshot(snapshot)
-        
+
     save_snapshot_in_disk(snapshot, config['path'])
 
     if config['url']:
         send_snapshot_to_devicehub(snapshot, config['token'], config['url'])
 
-    print(f"\nworkbench: END{vline}")
+    logger.info(_("END"))
 
 
 if __name__ == '__main__':
