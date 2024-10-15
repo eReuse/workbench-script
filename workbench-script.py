@@ -331,7 +331,7 @@ def send_snapshot_to_devicehub(snapshot, token, url):
             print(response_text)
 
     except Exception as e:
-        print(f"workbench: ERROR: Snapshot not remotely sent. URL '{url}' is unreachable. Do you have internet? Is your server up & running?\n    {e}")
+        print(f"workbench: ERROR: Snapshot not remotely sent to URL '{url}'. Do you have internet? Is your server up & running? Is the url token authorized?\n    {e}")
 
 def load_config(config_file="settings.ini"):
     """
