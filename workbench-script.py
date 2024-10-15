@@ -320,11 +320,11 @@ def send_snapshot_to_devicehub(snapshot, token, url):
 
         try:
             response = json.loads(response_text)
-            if response.get('public_url'):
+            if response.get('url'):
                 # apt install qrencode
-                qr = "echo {} | qrencode -t ANSI".format(response['public_url'])
+                qr = "echo {} | qrencode -t ANSI".format(response['url'])
                 print(exec_cmd(qr))
-                print("public_url: {}".format(response['public_url']))
+                print("url: {}".format(response['url']))
             if response.get("dhid"):
                 print("dhid: {}".format(response['dhid']))
         except Exception:
