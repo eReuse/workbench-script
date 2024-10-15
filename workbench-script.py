@@ -41,6 +41,7 @@ def logs(f):
 
 @logs
 def exec_cmd(cmd):
+    print(f'workbench: INFO: running command `{cmd}`')
     return os.popen(cmd).read()
 
 @logs
@@ -220,7 +221,7 @@ def gen_erase(all_disks, type_erase, user_disk=None):
 
 @logs
 def exec_smart(disk):
-    cmd = f'smartctl -x --json=cosviu /dev/{disk}'
+    cmd = f'sudo smartctl -x --json=cosviu /dev/{disk}'
     return json.loads(exec_cmd(cmd))
 
 
