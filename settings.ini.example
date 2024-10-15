@@ -4,3 +4,4 @@ token = '1234'
 # path = /path/to/save
 # device = your_device_name
 # # erase = basic
+# legacy = true
