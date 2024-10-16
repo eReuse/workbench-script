@@ -1,6 +1,6 @@
 [settings]
-url = http://localhost:8000/api/snapshot/
-token = '1234'
+url = http://10.0.2.2:8000/api/snapshot/
+token = '5018dd65-9abd-4a62-8896-80f34ac66150'
 path = /mnt
 # device = your_device_name
 # # erase = basic
