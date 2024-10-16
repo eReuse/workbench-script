@@ -97,7 +97,7 @@ END
 
 install_netboot() {
         # if you want to refresh install, remove or move dir
-        if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" ]; then
+        if [ ! -d "${tftp_path}" ] || [ "${FORCE:-}" = 'true' ]; then
                 ${SUDO} mkdir -p "${tftp_path}/pxelinux.cfg"
                 if [ ! -f "${tftp_path}/netboot.tar.gz" ]; then
                         url="http://ftp.debian.org/debian/dists/${VERSION_CODENAME}/main/installer-amd64/current/images/netboot/netboot.tar.gz"
