@@ -17,8 +17,6 @@ detect_user() {
                 # detect user with sudo or already on sudo src https://serverfault.com/questions/568627/can-a-program-tell-it-is-being-run-under-sudo/568628#568628
         elif [ ! "${userid}" = 0 ] || [ -n "${SUDO_USER}" ]; then
                 SUDO='sudo'
-                # jump to current dir where the script is so relative links work
-                cd "$(dirname "${0}")"
                 # working directory to build the iso
                 ISO_PATH="iso"
                 # detect pure root
@@ -122,7 +120,7 @@ install_netboot() {
 
 init_config() {
 
-        # get where the script is
+        # jump to current dir where the script is so relative links work
         cd "$(dirname "${0}")"
 
         # this is what we put in the files we modity
