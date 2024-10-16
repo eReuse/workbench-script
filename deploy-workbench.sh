@@ -260,7 +260,7 @@ prepare_app() {
         ${SUDO} cp workbench-script.py "${workbench_dir}/"
         ${SUDO} cp -arp locale "${workbench_dir}/"
         # TODO uncomment when we have dependencies again
-        ${SUDO} cp requirements.txt "${workbench_dir}/"
+        #${SUDO} cp requirements.txt "${workbench_dir}/"
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
