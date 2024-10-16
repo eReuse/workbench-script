@@ -259,6 +259,8 @@ prepare_app() {
         ${SUDO} mkdir -p "${workbench_dir}"
         ${SUDO} cp workbench-script.py "${workbench_dir}/"
         ${SUDO} cp -arp locale "${workbench_dir}/"
+        # TODO uncomment when we have dependencies again
+        ${SUDO} cp requirements.txt "${workbench_dir}/"
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
@@ -313,7 +315,8 @@ echo 'Install sanitize requirements'
 apt-get install -y --no-install-recommends \
   hdparm nvme-cli < /dev/null
 
-pipenv run pip install -r /opt/workbench/requirements.txt
+# TODO uncomment when we have dependencies again
+# pipenv run pip install -r /opt/workbench/requirements.txt
 END
 )"
 }
