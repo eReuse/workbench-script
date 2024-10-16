@@ -303,7 +303,7 @@ echo 'Install requirements'
 # Install debian requirements
 apt-get install -y --no-install-recommends \
   sudo locales \
-  python3 python3-dev python3-pip pipenv \
+  python-is-python3 python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
