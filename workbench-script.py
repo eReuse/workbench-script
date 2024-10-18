@@ -76,6 +76,14 @@ SNAPSHOT_BASE = {
 ## Command Functions ##
 
 @logs
+def get_disks():
+    disks = json.loads(
+        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
+    )
+    return disks.get('blockdevices', [])
+
+
+@logs
 def gen_erase(type_erase, user_disk=None):
     if user_disk:
         return exec_cmd(f"sanitize -d {user_disk} -m {type_erase}")
@@ -280,12 +288,13 @@ def main():
     if os.geteuid() != 0:
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
+    all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
 
-    if config.get("legacy")
+    if config.get("legacy"):
         convert_to_legacy_snapshot(snapshot)
     else:
-        snapshot['erase'] = gen_erase(config['erase'].upper(), user_disk=config['device'])
+        snapshot['erase'] = gen_erase(config['erase'], user_disk=config['device'])
 
     save_snapshot_in_disk(snapshot, config['path'])
 

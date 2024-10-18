@@ -264,6 +264,8 @@ prepare_app() {
 
         # startup script execution
         cat > "${ISO_PATH}/chroot/root/.profile" <<END
+# pipx path for usody-sanitize
+PATH="${PATH}:/root/.local/bin"
 if [ -f /tmp/workbench_lock ]; then
         return 0
 else
@@ -304,14 +306,16 @@ echo 'Install requirements'
 apt-get install -y --no-install-recommends \
   sudo locales \
   python-is-python3 python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common pipx < /dev/null
+
+pipx install usody-sanitize
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
 #apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
 
-echo 'Install sanitize requirements'
+echo 'Install usody-sanitize requirements'
 
-# Install sanitize debian requirements
+# Install usody-sanitize debian requirements
 apt-get install -y --no-install-recommends \
   hdparm nvme-cli < /dev/null
 

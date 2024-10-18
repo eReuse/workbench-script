@@ -44,6 +44,21 @@ boot_iso_uefi_secureboot:
 		-drive file=deploy/iso/workbench_debug.iso,cache=none,if=virtio,format=raw,index=0,media=disk \
 		-boot menu=on
 
+test_usody_sanitize:
+	# TODO adapt settings accordingly for this test
+	# ERASE=y ./deploy-workbench.sh
+	# create 3 disks for testing
+	qemu-img create -f raw test_sanitize_disk1.img 1G
+	qemu-img create -f raw test_sanitize_disk2.img 1G
+	qemu-img create -f raw test_sanitize_disk3.img 1G
+	sudo qemu-system-x86_64 \
+		-enable-kvm -m 2G -vga qxl -netdev user,id=wan -device virtio-net,netdev=wan,id=nic1 \
+		-drive format=raw,file=iso/workbench_debug.iso,cache=none,if=virtio \
+		-drive format=raw,file=test_sanitize_disk1.img,cache=none,if=virtio \
+		-drive format=raw,file=test_sanitize_disk2.img,cache=none,if=virtio \
+		-drive format=raw,file=test_sanitize_disk3.img,cache=none,if=virtio
+
+
 es_gen_po:
 	cp locale/es/LC_MESSAGES/messages.po locale/es/LC_MESSAGES/messages.pot.bak
 	pygettext3 -p locale/es/LC_MESSAGES/ workbench-script.py
