@@ -76,45 +76,10 @@ SNAPSHOT_BASE = {
 ## Command Functions ##
 
 @logs
-def get_disks():
-    disks = json.loads(
-        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
-    )
-    return disks.get('blockdevices', [])
-
-@logs
-def gen_erase(all_disks, type_erase, user_disk=None):
-    erase = []
-    for disk in all_disks:
-        if user_disk and disk['name'] not in user_disk:
-            continue
-
-        if disk['type'] != 'disk':
-            continue
-
-        if 'boot' in disk['mountpoints']:
-            continue
-
-        if not disk['rota']:
-            # if soport nvme erase
-            erase.append(nvme_secure_erase(disk['name']))
-        elif disk['tran'] in ['ata', 'sata']:
-            # if soport ata erase
-            if type_erase == 'basic':
-                erase.append(ata_secure_erase_null(disk['name']))
-            elif type_erase == 'baseline':
-                erase.append(ata_secure_erase_null(disk['name']))
-            elif type_erase == 'enhanced':
-                erase.append(ata_secure_erase_enhanced(disk['name']))
-        else:
-            # For old disks
-            if type_erase == 'basic':
-                erase.append(erase_basic(disk['name']))
-            elif type_erase == 'baseline':
-                erase.append(erase_baseline(disk['name']))
-            elif type_erase == 'enhanced':
-                erase.append(erase_enhanced(disk['name']))
-    return erase
+def gen_erase(type_erase, user_disk=None):
+    if user_disk:
+        return exec_cmd(f"sanitize -d {user_disk} -m {type_erase} --confirm")
+    return exec_cmd(f"sanitize -a -m {type_erase} --confirm")
 
 
 @logs
@@ -314,16 +279,12 @@ def main():
     if os.geteuid() != 0:
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
-    all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
 
-    if config['erase'] and config['device'] and not config.get("legacy"):
-        snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase'] and not config.get("legacy"):
-        snapshot['erase'] = gen_erase(all_disks, config['erase'])
-
-    if config.get("legacy"):
+    if config.get("legacy")
         convert_to_legacy_snapshot(snapshot)
+    else:
+        snapshot['erase'] = gen_erase(config['erase'].upper(), user_disk=config['device'])
 
     save_snapshot_in_disk(snapshot, config['path'])
 
