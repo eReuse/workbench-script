@@ -362,6 +362,7 @@ export LANG=${LANG}
 export LC_ALL=${LANG}
 # this is a high level command that does locale-gen and update-locale altogether
 dpkg-reconfigure --frontend=noninteractive locales
+# DEBUG
 locale -a
 
 # Autologin root user
