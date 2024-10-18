@@ -78,8 +78,9 @@ SNAPSHOT_BASE = {
 @logs
 def gen_erase(type_erase, user_disk=None):
     if user_disk:
-        return exec_cmd(f"sanitize -d {user_disk} -m {type_erase} --confirm")
-    return exec_cmd(f"sanitize -a -m {type_erase} --confirm")
+        return exec_cmd(f"sanitize -d {user_disk} -m {type_erase}")
+    return exec_cmd(f"sanitize -a -m {type_erase}")
+    # return exec_cmd(f"sanitize -a -m {type_erase} --confirm")
 
 
 @logs
