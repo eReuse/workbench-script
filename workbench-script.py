@@ -67,7 +67,7 @@ SNAPSHOT_BASE = {
     'type': 'Snapshot',
     'uuid': str(uuid.uuid4()),
     'code': gen_code(),
-    'software': "EreuseWorkbench",
+    'software': "workbench-script",
     'version': "0.0.1",
     'data': {},
     'erase': []
