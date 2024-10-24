@@ -493,6 +493,7 @@ install_requirements() {
                          grub-pc-bin
                          grub-efi-amd64-bin
                          ovmf
+                         shim-signed
                          grub-efi-amd64-signed'
         ${SUDO} apt-get install -y \
                 ${image_deps} \
