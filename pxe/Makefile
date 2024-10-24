@@ -17,10 +17,10 @@ clean:
 	@echo "Deleting TFTP directory: $(tftp_path)"
 	@rm -rf $(tftp_path)
 
-	#TODO: all pxe packages on one same place
 	@echo "Deleting NFS directory: $(nfs_path)"
+
+	#TODO: all pxe packages on one same place
 	@echo "purging PXE packages: "
-	@if [ -n "$(PACKAGES)" ]; then sudo apt-get remove --purge -y $(PACKAGES); fi
 
 	@sudo apt-get remove --purge dnsmasq nfs-kernel-server syslinux
 	@echo "Cleaning up package leftovers..."
