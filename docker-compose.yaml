@@ -1,0 +1,17 @@
+
+services:
+  build-iso:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.build
+    #this is needed for mount
+    privileged: true
+    volumes:
+      - type: bind
+        source: .
+        target: /var/opt
+        read_only: true
+      - type: bind
+        source: ./iso
+        target: /var/opt/iso
+        read_only: false
