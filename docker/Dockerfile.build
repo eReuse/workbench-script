@@ -1,0 +1,28 @@
+FROM debian:bookworm-slim
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    smartmontools \
+    lshw \
+    hwinfo \
+    dmidecode \
+    python3 \
+    pipenv \
+    sudo \
+    debootstrap \
+    && rm -rf /var/lib/apt/lists/*
+
+
+WORKDIR /var/opt
+
+#allow sudo so that deploy-workbench.sh runs
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+RUN echo "docker ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+RUN chown -R docker /var/opt/iso
+
+ENV USER=docker
+USER docker
+
+COPY ./deploy-workbench.sh ./
+ENTRYPOINT sh deploy-workbench.sh
