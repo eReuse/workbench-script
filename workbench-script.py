@@ -346,6 +346,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
         logger.error(_("Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), snapshot["uuid"], url, e)
 
 
+
 def load_config(config_file="settings.ini"):
     """
     Tries to load configuration from a config file.
