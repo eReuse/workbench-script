@@ -352,7 +352,7 @@ def send_to_sign_credential(snapshot, token, url):
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
-            response_text = response.read().decode('utf-8')
+            #response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
