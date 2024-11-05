@@ -280,7 +280,7 @@ if [ "\${nfs_host}" ]; then
         mount --bind /run/live/medium /mnt
         # debian live nfs path is readonly, do a trick
         #   to make snapshots subdir readwrite
-        mount \${nfs_host}:/snapshots /run/live/medium/snapshots
+        mount -v \${nfs_host}:/snapshots /run/live/medium/snapshots
         # reload mounts on systemd
         systemctl daemon-reload
 fi
