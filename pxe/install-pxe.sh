@@ -37,7 +37,7 @@ backup_file() {
 
         if [ -f "${target}" ]; then
                 if ! grep -q 'we should do a backup' "${target}"; then
-                        ${SUDO} cp -a "${target}" "${target}-bak_${ts}"
+                        ${SUDO} cp -v -a "${target}" "${target}-bak_${ts}"
                 fi
         fi
 }
@@ -72,7 +72,7 @@ END
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
                 if [ -f "settings.ini" ]; then
-                        ${SUDO} cp settings.ini "${nfs_path}/settings.ini"
+                        ${SUDO} cp -v settings.ini "${nfs_path}/settings.ini"
                 else
                         echo "ERROR: $(pwd)/settings.ini does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/settings.ini.example"
                         exit 1
@@ -110,8 +110,12 @@ install_netboot() {
                 ${SUDO} cp -fv "${PXE_DIR}/../iso/staging/live/vmlinuz" "${tftp_path}/"
                 ${SUDO} cp -fv "${PXE_DIR}/../iso/staging/live/initrd" "${tftp_path}/"
 
-                ${SUDO} cp /usr/lib/syslinux/memdisk "${tftp_path}/"
-                ${SUDO} cp /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
+                ${SUDO} cp -v /usr/lib/syslinux/memdisk "${tftp_path}/"
+                ${SUDO} cp -v /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
+                if [ ! -f ./pxe-menu.cfg ]; then
+                        ${SUDO} cp -v ./pxe-menu.cfg.example pxe-menu.cfg
+                        echo "WARNING: pxe-menu.cfg was not there, pxe-menu.cfg.example was copied, this only happens once"
+                fi
                 envsubst < ./pxe-menu.cfg | ${SUDO} tee "${tftp_path}/pxelinux.cfg/default"
         fi
 

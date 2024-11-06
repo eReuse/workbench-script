@@ -199,12 +199,12 @@ create_persistence_partition() {
                 mkdir -p "${tmp_rw_mount}"
                 ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
                 ${SUDO} mkdir -p "${tmp_rw_mount}"
-                if [ -f "settings.ini" ]; then
-                        ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings.ini"
-                else
-                        echo "ERROR: settings.ini does not exist yet, cannot read config from there. You can take inspiration with file settings.ini.example"
-                        exit 1
+                if [ ! -f "settings.ini" ]; then
+                        ${SUDO} cp -v settings.ini.example settings.ini
+                        echo "WARNING: settings.ini was not there, settings.ini.example was copied, this only happens once"
                 fi
+                ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings.ini"
+
                 ${SUDO} umount "${tmp_rw_mount}"
 
                 uuid="$(blkid "${rw_img_path}" | awk '{ print $3; }')"
