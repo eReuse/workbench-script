@@ -12,6 +12,8 @@ import gettext
 import locale
 import logging
 
+from pathlib import Path
+from string import Template
 from datetime import datetime
 
 
@@ -528,17 +530,12 @@ def main():
         convert_to_legacy_snapshot(snapshot)
         snapshot = json.dumps(snapshot)
     else:
+        snapshot = convert_to_credential(snapshot)
         url_wallet = config.get("url_wallet")
         wb_sign_token = config.get("wb_sign_token")
-
-        if wb_sign_token:
-            tk = wb_sign_token.encode("utf8")
-            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
-
         if url_wallet and wb_sign_token:
             snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
-        else:
-            snapshot = json.dumps(snapshot)
+
 
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 

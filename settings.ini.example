@@ -1,8 +1,13 @@
 [settings]
 url = http://localhost:8000/api/snapshot/
-token = '1234'
+#url = https://demo.ereuse.org/api/v1/snapshot/
+# sample token that works with default deployment such as the previous two urls
+token = 5018dd65-9abd-4a62-8896-80f34ac66150
+
+# Idhub
 # wb_sign_token = "27de6ad7-cee2-4fe8-84d4-c7eea9c969c8"
 # url_wallet = "http://localhost"
+
 # path = /path/to/save
 # device = your_device_name
 # # erase = basic
