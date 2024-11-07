@@ -301,10 +301,6 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
     components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
-    qr = "echo {} | qrencode -t ANSI".format(ev_url)
-    if not legacy:
-        print(exec_cmd(qr))
-        print(f"url: {ev_url}")
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -331,8 +327,12 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
                         print("dhid: {}".format(response['dhid']))
                 except Exception:
                     logger.error(response_text)
+            else:
+                qr = "echo {} | qrencode -t ANSI".format(ev_url)
+                print(exec_cmd(qr))
+                print(f"url: {ev_url}")
         else:
-            logger.error(_("Snapshot cannot sent to '%s'"), url)
+            logger.error(_("Snapshot %s, cannot sent to '%s'"), snapshot["uuid"], url)
 
     except Exception as e:
         logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
