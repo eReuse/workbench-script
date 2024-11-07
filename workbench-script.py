@@ -262,7 +262,7 @@ def smartctl(all_disks, disk=None):
 # TODO permitir selección
 # TODO permitir que vaya más rápido
 def get_data(all_disks):
-    lshw = 'sudo lshw -json'
+    lshw = 'sudo lshw -xml'
     hwinfo = 'sudo hwinfo --reallyall'
     dmidecode = 'sudo dmidecode'
     lspci = 'sudo lspci -vv'
