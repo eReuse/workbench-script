@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-10-15 21:15+0200\n"
+"POT-Creation-Date: 2024-11-08 18:25+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,19 +17,19 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: workbench-script.py:48 workbench-script.py:53
+#: workbench-script.py:49 workbench-script.py:54
 msgid "Running command `%s`"
 msgstr "Ejecutando comando `%s`"
 
-#: workbench-script.py:284
+#: workbench-script.py:279
 msgid "Created snapshots directory at '%s'"
 msgstr "Creado directorio de snapshots en '%s'"
 
-#: workbench-script.py:287
+#: workbench-script.py:282
 msgid "Snapshot written in path '%s'"
 msgstr "Snapshot escrito en ruta '%s'"
 
-#: workbench-script.py:290
+#: workbench-script.py:285
 msgid ""
 "Attempting to save file in actual path. Reason: Failed to write in snapshots "
 "directory:\n"
@@ -39,11 +39,11 @@ msgstr ""
 "escribir en el directorio de snapshots:\n"
 "    %s."
 
-#: workbench-script.py:297
+#: workbench-script.py:292
 msgid "Snapshot written in fallback path '%s'"
 msgstr "Snapshot escrito en ruta alternativa '%s'"
 
-#: workbench-script.py:299
+#: workbench-script.py:294
 msgid ""
 "Could not save snapshot locally. Reason: Failed to write in fallback path:\n"
 "    %s"
@@ -52,49 +52,53 @@ msgstr ""
 "alternativa:\n"
 "    %s"
 
-#: workbench-script.py:316
+#: workbench-script.py:317
 msgid "Snapshot successfully sent to '%s'"
 msgstr "Snapshot enviado con éxito a '%s'"
 
-#: workbench-script.py:331
+#: workbench-script.py:335
+msgid "Snapshot %s could not be sent to URL '%s'"
+msgstr "Snapshot %s no se pudo enviar a la URL '%s'"
+
+#: workbench-script.py:338
 msgid ""
-"Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server "
-"up & running? Is the url token authorized?\n"
+"Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your "
+"server up & running? Is the url token authorized?\n"
 "    %s"
 msgstr ""
-"Snapshot no enviado remotamente a la URL '%s'. Tienes internet? Está el "
+"Snapshot %s no enviado remotamente a la URL '%s'. Tienes internet? Está el "
 "servidor en marcha? Está autorizado el url token?\n"
 "    %s"
 
-#: workbench-script.py:342
+#: workbench-script.py:350
 msgid "Found config file in path: %s."
 msgstr "Encontrado fichero de configuración en ruta: %s."
 
-#: workbench-script.py:353
+#: workbench-script.py:361
 msgid "Config file '%s' not found. Using default values."
 msgstr ""
 "Fichero de configuración '%s' no encontrado. Utilizando valores por defecto."
 
-#: workbench-script.py:373
+#: workbench-script.py:379
 msgid "workbench-script.py [-h] [--config CONFIG]"
 msgstr ""
 
-#: workbench-script.py:374
+#: workbench-script.py:380
 msgid "Optional config loader for workbench."
 msgstr "Cargador opcional de configuración para workbench"
 
-#: workbench-script.py:377
+#: workbench-script.py:383
 msgid ""
 "path to the config file. Defaults to 'settings.ini' in the current directory."
 msgstr ""
 "ruta al fichero de configuración. Por defecto es 'settings.ini' en el "
 "directorio actual"
 
-#: workbench-script.py:410
+#: workbench-script.py:416
 msgid "START"
 msgstr "INICIO"
 
-#: workbench-script.py:423
+#: workbench-script.py:430
 msgid ""
 "This script must be run as root. Collected data will be incomplete or "
 "unusable"
@@ -102,6 +106,6 @@ msgstr ""
 "Es conveniente que este script sea ejecutado como administrador (root). Los "
 "datos recopilados serán incompletos o no usables."
 
-#: workbench-script.py:441
+#: workbench-script.py:448
 msgid "END"
 msgstr "FIN"

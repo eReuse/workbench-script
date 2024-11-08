@@ -6,6 +6,7 @@ import uuid
 import hashlib
 import argparse
 import configparser
+import urllib.parse
 import urllib.request
 
 import gettext
@@ -16,6 +17,7 @@ from datetime import datetime
 
 
 ## Legacy Functions ##
+
 def convert_to_legacy_snapshot(snapshot):
     snapshot["sid"] = str(uuid.uuid4()).split("-")[0]
     snapshot["software"] = "workbench-script"
@@ -25,9 +27,8 @@ def convert_to_legacy_snapshot(snapshot):
     snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
     snapshot["data"]["smart"] = snapshot["data"]["disks"]
     snapshot["data"].pop("disks")
-    snapshot.pop("code")
     snapshot.pop("erase")
-    
+
 ## End Legacy Functions ##
 
 
@@ -54,11 +55,6 @@ def exec_cmd_erase(cmd):
     return ''
     # return os.popen(cmd).read()
 
-
-def gen_code():
-    uid = str(uuid.uuid4()).encode('utf-8')
-    return hashlib.shake_256(uid).hexdigest(3)
-
 ## End Utility functions ##
 
 
@@ -66,7 +62,6 @@ SNAPSHOT_BASE = {
     'timestamp': str(datetime.now()),
     'type': 'Snapshot',
     'uuid': str(uuid.uuid4()),
-    'code': gen_code(),
     'software': "workbench-script",
     'version': "0.0.1",
     'data': {},
@@ -300,7 +295,13 @@ def save_snapshot_in_disk(snapshot, path):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url):
+def send_snapshot_to_devicehub(snapshot, token, url, legacy):
+    url_components = urllib.parse.urlparse(url)
+    ev_path = "evidence/{}".format(snapshot["uuid"])
+    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
+    ev_url = urllib.parse.urlunparse(components)
+    # apt install qrencode
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -314,21 +315,28 @@ def send_snapshot_to_devicehub(snapshot, token, url):
 
         if 200 <= status_code < 300:
             logger.info(_("Snapshot successfully sent to '%s'"), url)
-
-        try:
-            response = json.loads(response_text)
-            if response.get('url'):
-                # apt install qrencode
-                qr = "echo {} | qrencode -t ANSI".format(response['url'])
+            if legacy:
+                try:
+                    response = json.loads(response_text)
+                    if response.get('url'):
+                        # apt install qrencode
+                        qr = "echo {} | qrencode -t ANSI".format(response['url'])
+                        print(exec_cmd(qr))
+                        print("url: {}".format(response['url']))
+                    if response.get("dhid"):
+                        print("dhid: {}".format(response['dhid']))
+                except Exception:
+                    logger.error(response_text)
+            else:
+                qr = "echo {} | qrencode -t ANSI".format(ev_url)
                 print(exec_cmd(qr))
-                print("url: {}".format(response['url']))
-            if response.get("dhid"):
-                print("dhid: {}".format(response['dhid']))
-        except Exception:
-            logger.error(response_text)
+                print(f"url: {ev_url}")
+        else:
+            logger.error(_("Snapshot %s could not be sent to URL '%s'"), snapshot["uuid"], url)
 
     except Exception as e:
-        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        logger.error(_("Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), snapshot["uuid"], url, e)
+
 
 def load_config(config_file="settings.ini"):
     """
@@ -414,6 +422,7 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
+    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
@@ -428,13 +437,13 @@ def main():
     elif config['erase'] and not config.get("legacy"):
         snapshot['erase'] = gen_erase(all_disks, config['erase'])
 
-    if config.get("legacy"):
+    if legacy:
         convert_to_legacy_snapshot(snapshot)
 
     save_snapshot_in_disk(snapshot, config['path'])
 
     if config['url']:
-        send_snapshot_to_devicehub(snapshot, config['token'], config['url'])
+        send_snapshot_to_devicehub(snapshot, config['token'], config['url'], legacy)
 
     logger.info(_("END"))
 
