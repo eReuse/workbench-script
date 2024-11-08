@@ -332,10 +332,10 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
                 print(exec_cmd(qr))
                 print(f"url: {ev_url}")
         else:
-            logger.error(_("Snapshot %s, cannot sent to '%s'"), snapshot["uuid"], url)
+            logger.error(_("Snapshot %s could not be sent to URL '%s'"), snapshot["uuid"], url)
 
     except Exception as e:
-        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        logger.error(_("Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), snapshot["uuid"], url, e)
 
 
 def load_config(config_file="settings.ini"):
