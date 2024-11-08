@@ -44,6 +44,10 @@ boot_iso_uefi_secureboot:
 		-drive file=deploy/iso/workbench_debug.iso,cache=none,if=virtio,format=raw,index=0,media=disk \
 		-boot menu=on
 
+es_gen:
+	$(MAKE) es_gen_po
+	$(MAKE) es_gen_mo
+
 es_gen_po:
 	cp locale/es/LC_MESSAGES/messages.po locale/es/LC_MESSAGES/messages.pot.bak
 	pygettext3 -p locale/es/LC_MESSAGES/ workbench-script.py
