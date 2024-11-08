@@ -132,11 +132,10 @@ init_config() {
 
         PXE_DIR="$(pwd)"
 
-        if [ -f ./.env ]; then
-                . ./.env
-        else
-                echo "PXE: WARNING: $(pwd)/.env does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/.env.example"
+        if [ ! -f ./.env ]; then
+                echo "WARNING: .env was not there, .env.example was copied, this only happens once"
         fi
+        . ./.env
         VERSION_CODENAME="${VERSION_CODENAME:-bookworm}"
         tftp_path="${tftp_path:-/srv/pxe-tftp}"
         # vars used in envsubst require to be exported:
