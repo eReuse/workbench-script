@@ -298,7 +298,7 @@ def save_snapshot_in_disk(snapshot, path):
 def send_snapshot_to_devicehub(snapshot, token, url, legacy):
     url_components = urllib.parse.urlparse(url)
     ev_path = "evidence/{}".format(snapshot["uuid"])
-    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
+    components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
 
