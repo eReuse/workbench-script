@@ -1,6 +1,6 @@
 [settings]
-#url = http://localhost:8000/api/v1/snapshot/
-url = https://demo.ereuse.org/api/v1/snapshot/
+url = http://localhost:8000/api/v1/snapshot/
+#url = https://demo.ereuse.org/api/v1/snapshot/
 # sample token that works with default deployment such as the previous two urls
 token = 5018dd65-9abd-4a62-8896-80f34ac66150
 
