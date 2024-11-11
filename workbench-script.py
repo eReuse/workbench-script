@@ -407,7 +407,7 @@ def load_config(config_file="settings.ini"):
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy = None, None, None, None, None
+        url, token, device, erase, legacy, url_wallet, wb_sign_token = None, None, None, None, None, None, None
 
     return {
         'path': path,
@@ -500,6 +500,8 @@ def main():
 
         if url_wallet and wb_sign_token:
             snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
+        else:
+            snapshot = json.dumps(snapshot)
 
 
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
