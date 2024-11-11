@@ -133,6 +133,7 @@ init_config() {
         PXE_DIR="$(pwd)"
 
         if [ ! -f ./.env ]; then
+                cp -v ./.env.example ./.env
                 echo "WARNING: .env was not there, .env.example was copied, this only happens once"
         fi
         . ./.env
