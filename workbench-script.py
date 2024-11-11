@@ -333,6 +333,11 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
                 print(f"url: {ev_url}")
         else:
             logger.error(_("Snapshot %s could not be sent to URL '%s'"), snapshot["uuid"], url)
+    # TODO review all the try-except thing here; maybe the try inside legacy does not make sense anymore
+    except urllib.error.HTTPError as e:
+        error_details = e.read().decode('utf-8')  # Get the error response body
+        logger.error(_("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"),
+                 snapshot["uuid"], url, error_details)
 
     except Exception as e:
         logger.error(_("Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), snapshot["uuid"], url, e)
