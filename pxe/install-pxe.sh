@@ -69,14 +69,14 @@ END
         # reload nfs exports
         ${SUDO} exportfs -vra
 
+        if [ ! -f ./.settings.ini ]; then
+                cp -v ./.settings.ini.example ./.settings.ini
+                echo "WARNING: settings.ini was not there, settings.ini.example was copied, this only happens once"
+        fi
 
         if [ ! -f "${nfs_path}/settings.ini" ]; then
-                if [ -f "settings.ini" ]; then
-                        ${SUDO} cp -v settings.ini "${nfs_path}/settings.ini"
-                else
-                        echo "ERROR: $(pwd)/settings.ini does not exist yet, cannot read config from there. You can take inspiration with file $(pwd)/settings.ini.example"
-                        exit 1
-                fi
+                ${SUDO} cp -v settings.ini "${nfs_path}/settings.ini"
+                echo "WARNING: ${nfs_path}/settings.ini was not there, ./settings.ini was copied, this only happens once"
         fi
 }
 
