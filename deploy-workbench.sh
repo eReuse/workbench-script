@@ -325,7 +325,7 @@ echo 'Install requirements'
 
 # Install debian requirements
 apt-get install -y --no-install-recommends \
-  sudo locales keyboard-configuration console-setup \
+  sudo locales keyboard-configuration console-setup qrencode \
   python-is-python3 python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
 
