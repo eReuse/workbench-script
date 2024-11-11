@@ -26,6 +26,7 @@ def convert_to_legacy_snapshot(snapshot):
     snapshot["settings_version"] = "No Settings Version (NaN)"
     snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
     snapshot["data"]["smart"] = snapshot["data"]["disks"]
+    snapshot["data"]["lshw"] = json.loads(snapshot["data"]["lshw"])
     snapshot["data"].pop("disks")
     snapshot.pop("erase")
 
