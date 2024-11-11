@@ -69,8 +69,8 @@ END
         # reload nfs exports
         ${SUDO} exportfs -vra
 
-        if [ ! -f ./.settings.ini ]; then
-                cp -v ./.settings.ini.example ./.settings.ini
+        if [ ! -f ./settings.ini ]; then
+                cp -v ./settings.ini.example ./settings.ini
                 echo "WARNING: settings.ini was not there, settings.ini.example was copied, this only happens once"
         fi
 
