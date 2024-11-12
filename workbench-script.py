@@ -319,13 +319,15 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
             if legacy:
                 try:
                     response = json.loads(response_text)
-                    if response.get('url'):
+                    public_url = response.get('public_url')
+                    dhid = response.get('dhid')
+                    if public_url:
                         # apt install qrencode
-                        qr = "echo {} | qrencode -t ANSI".format(response['url'])
+                        qr = "echo {} | qrencode -t ANSI".format(public_url)
                         print(exec_cmd(qr))
-                        print("url: {}".format(response['url']))
-                    if response.get("dhid"):
-                        print("dhid: {}".format(response['dhid']))
+                        print("url: {}".format(public_url))
+                    if dhid:
+                        print("dhid: {}".format(dhid))
                 except Exception:
                     logger.error(response_text)
             else:
