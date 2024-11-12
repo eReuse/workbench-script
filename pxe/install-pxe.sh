@@ -93,7 +93,7 @@ pxe-service=x86PC,"Network Boot",pxelinux
 enable-tftp
 tftp-root=${tftp_path}
 END
-        sudo systemctl restart dnsmasq
+        sudo systemctl restart dnsmasq || true
 }
 
 install_netboot() {
