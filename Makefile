@@ -44,6 +44,11 @@ boot_iso_uefi_secureboot:
 		-drive file=deploy/iso/workbench_debug.iso,cache=none,if=virtio,format=raw,index=0,media=disk \
 		-boot menu=on
 
+# when you change something, you need to refresh it this way
+regenerate_pxe_install:
+	./deploy-workbench.sh
+	pxe/install-pxe.sh
+
 es_gen:
 	$(MAKE) es_gen_po
 	$(MAKE) es_gen_mo
