@@ -251,6 +251,19 @@ def smartctl(all_disks, disk=None):
 
     return data_list
 
+@logs
+def inxi():
+    filename = "hw.json"
+    command =  'sudo inxi'
+    options = '-a -x 3 -f -m -n --edid -G -E -M -A -B -D --output json --output-file'
+    cmd = f"{command} {options} {filename}"
+    exec_cmd(cmd)
+    with open(filename) ad f:
+        data = f.read()
+        rm = f"rm -f {filename}"
+        os.popen(rm).read()
+    return data
+
 ## End Command Functions ##
 
 
@@ -261,12 +274,14 @@ def get_data(all_disks):
     hwinfo = 'sudo hwinfo --reallyall'
     dmidecode = 'sudo dmidecode'
     lspci = 'sudo lspci -vv'
+
     data = {
         'lshw': exec_cmd(lshw) or "{}",
         'disks': smartctl(all_disks),
         'hwinfo': exec_cmd(hwinfo),
         'dmidecode': exec_cmd(dmidecode),
         'lspci': exec_cmd(lspci)
+        'inxi': exec_inxi()
     }
 
     return data
