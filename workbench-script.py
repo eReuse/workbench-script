@@ -3,7 +3,6 @@
 import os
 import json
 import uuid
-import hashlib
 import argparse
 import configparser
 import urllib.parse
@@ -80,6 +79,32 @@ def convert_to_credential(snapshot):
         template = Template(ff)
         cred = template.substitute(**snapshot)
     return cred
+
+def convert_to_legacy_snapshot(snapshot):
+    snapshot["sid"] = str(uuid.uuid4()).split("-")[1]
+    snapshot["software"] = "workbench-script"
+    snapshot["version"] = "dev"
+    snapshot["schema_api"] = "1.0.0"
+    snapshot["settings_version"] = "No Settings Version (NaN)"
+    snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
+    snapshot["data"]["smart"] = snapshot["data"]["disks"]
+    snapshot["data"].pop("disks")
+    snapshot["data"].pop("inxi")
+    snapshot.pop("erase")
+    snapshot.pop("token_hash")
+
+    lshw = 'sudo lshw -xml'
+    hwinfo = 'sudo hwinfo --reallyall'
+    lspci = 'sudo lspci -vv'
+
+    data = {
+        'lshw': exec_cmd(lshw) or "{}",
+        'hwinfo': exec_cmd(hwinfo),
+        'lspci': exec_cmd(lspci)
+    }
+    snapshot['data'].update(data)
+
+## End Legacy Functions ##
 
 
 ## Command Functions ##
@@ -329,12 +354,15 @@ def send_to_sign_credential(cred, token, url):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, legacy):
+def send_snapshot_to_devicehub(snapshot, token, url):
     url_components = urllib.parse.urlparse(url)
     ev_path = "evidence/{}".format(snapshot["uuid"])
-    components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
+    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
+    qr = "echo {} | qrencode -t ANSI".format(ev_url)
+    print(exec_cmd(qr))
+    print(ev_url)
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -345,7 +373,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
-            response_text = response.read().decode('utf-8')
+            #response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
             logger.info(_("Snapshot successfully sent to '%s'"), url)
@@ -368,15 +396,10 @@ def send_snapshot_to_devicehub(snapshot, token, url, legacy):
                 print(exec_cmd(qr))
                 print(f"url: {ev_url}")
         else:
-            logger.error(_("Snapshot %s could not be sent to URL '%s'"), snapshot["uuid"], url)
-    # TODO review all the try-except thing here; maybe the try inside legacy does not make sense anymore
-    except urllib.error.HTTPError as e:
-        error_details = e.read().decode('utf-8')  # Get the error response body
-        logger.error(_("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"),
-                 snapshot["uuid"], url, error_details)
+            logger.error(_("Snapshot cannot sent to '%s'"), url)
 
     except Exception as e:
-        logger.error(_("Snapshot %s not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), snapshot["uuid"], url, e)
+        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
 
 
@@ -468,7 +491,6 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
-    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
@@ -504,7 +526,7 @@ def main():
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 
     if config['url']:
-        send_snapshot_to_devicehub(snapshot, config['token'], config['url'], legacy)
+        send_snapshot_to_devicehub(snapshot, config['token'], config['url'])
 
     logger.info(_("END"))
 
