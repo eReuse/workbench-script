@@ -329,6 +329,7 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
 
+
 def send_to_sign_credential(snapshot, token, url):
     headers = {
         "Authorization": f"Bearer {token}",
@@ -363,6 +364,59 @@ def send_to_sign_credential(snapshot, token, url):
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
             return snapshot
+    except Exception as e:
+        logger.error(_("Credential not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+
+
+
+# TODO sanitize url, if url is like this, it fails
+#   url = 'http://127.0.0.1:8000/api/snapshot/'
+def send_snapshot_to_devicehub(snapshot, token, url):
+    url_components = urllib.parse.urlparse(url)
+    ev_path = "evidence/{}".format(snapshot["uuid"])
+    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
+    ev_url = urllib.parse.urlunparse(components)
+    # apt install qrencode
+    qr = "echo {} | qrencode -t ANSI".format(ev_url)
+    print(exec_cmd(qr))
+    print(ev_url)
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    try:
+        data = json.dumps(snapshot).encode('utf-8')
+        request = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(request) as response:
+            status_code = response.getcode()
+            #response_text = response.read().decode('utf-8')
+
+        if 200 <= status_code < 300:
+            logger.info(_("Snapshot successfully sent to '%s'"), url)
+            if legacy:
+                try:
+                    response = json.loads(response_text)
+                    public_url = response.get('public_url')
+                    dhid = response.get('dhid')
+                    if public_url:
+                        # apt install qrencode
+                        qr = "echo {} | qrencode -t ANSI".format(public_url)
+                        print(exec_cmd(qr))
+                        print("url: {}".format(public_url))
+                    if dhid:
+                        print("dhid: {}".format(dhid))
+                except Exception:
+                    logger.error(response_text)
+            else:
+                qr = "echo {} | qrencode -t ANSI".format(ev_url)
+                print(exec_cmd(qr))
+                print(f"url: {ev_url}")
+        else:
+            logger.error(_("Snapshot cannot sent to '%s'"), url)
+
+    except Exception as e:
+        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
     except Exception as e:
         logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
