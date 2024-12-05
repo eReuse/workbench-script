@@ -329,7 +329,6 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
 
-
 def send_to_sign_credential(snapshot, token, url):
     headers = {
         "Authorization": f"Bearer {token}",
@@ -353,7 +352,7 @@ def send_to_sign_credential(snapshot, token, url):
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
-            #response_text = response.read().decode('utf-8')
+            response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
@@ -364,17 +363,18 @@ def send_to_sign_credential(snapshot, token, url):
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
             return snapshot
-    except Exception as e:
-        logger.error(_("Credential not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
+    except Exception as e:
+        logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        return json.dumps(snapshot)
 
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid):
     url_components = urllib.parse.urlparse(url)
-    ev_path = "evidence/{}".format(snapshot["uuid"])
-    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
+    ev_path = f"evidence/{ev_uuid}"
+    components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
     qr = "echo {} | qrencode -t ANSI".format(ev_url)
@@ -386,7 +386,7 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         "Content-Type": "application/json"
     }
     try:
-        data = json.dumps(snapshot).encode('utf-8')
+        data = snapshot.encode('utf-8')
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
@@ -587,11 +587,10 @@ def main():
 
         if wb_sign_token:
             tk = wb_sign_token.encode("utf8")
-            snapshot["token_hash"] = hashlib.hash256(tk).hexdigest()
+            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
 
         if url_wallet and wb_sign_token:
             snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
-
 
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 
