@@ -21,7 +21,7 @@ SNAPSHOT_BASE = {
     'uuid': str(uuid.uuid4()),
     'software': "workbench-script",
     'version': "0.0.1",
-    'token_hash': "",
+    'operator_id': "",
     'data': {},
     'erase': []
 }
@@ -87,11 +87,11 @@ def convert_to_legacy_snapshot(snapshot):
     snapshot["schema_api"] = "1.0.0"
     snapshot["settings_version"] = "No Settings Version (NaN)"
     snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
-    snapshot["data"]["smart"] = snapshot["data"]["disks"]
-    snapshot["data"].pop("disks")
+    snapshot["data"]["smart"] = snapshot["data"]["smartctl"]
+    snapshot["data"].pop("smartctl")
     snapshot["data"].pop("inxi")
+    snapshot.pop("operator_id")
     snapshot.pop("erase")
-    snapshot.pop("token_hash")
 
     lshw = 'sudo lshw -xml'
     hwinfo = 'sudo hwinfo --reallyall'
@@ -274,7 +274,7 @@ def smartctl(all_disks, disk=None):
             data = exec_smart(disk['name'])
             data_list.append(data)
 
-    return data_list
+    return json.dumps(data_list)
 
 ## End Command Functions ##
 
@@ -286,7 +286,7 @@ def get_data(all_disks):
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
 
     data = {
-        'disks': smartctl(all_disks),
+        'smartctl': smartctl(all_disks),
         'dmidecode': exec_cmd(dmidecode),
         'inxi': exec_cmd(inxi)
     }
@@ -329,35 +329,53 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
 
-def send_to_sign_credential(cred, token, url):
+def send_to_sign_credential(snapshot, token, url):
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
 
     try:
+        cred = {
+            "type": "DeviceSnapshotV1",
+            "save": False,
+            "data": {
+                "operator_id": snapshot["operator_id"],
+                "dmidecode": snapshot["data"]["dmidecode"],
+                "inxi": snapshot["data"]["inxi"],
+                "smartctl": snapshot["data"]["smartctl"],
+                "uuid": snapshot["uuid"],
+            }
+        }
+
         data = json.dumps(cred).encode('utf-8')
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
-            #response_text = response.read().decode('utf-8')
+            response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
+            res = json.loads(response_text)
+            if res.get("status") == "success" and res.get("data"):
+                return res["data"]
+            return snapshot
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
+            return snapshot
 
     except Exception as e:
-        logger.error(_("Credential not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        return json.dumps(snapshot)
 
 
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid):
     url_components = urllib.parse.urlparse(url)
-    ev_path = "evidence/{}".format(snapshot["uuid"])
-    components = (url_components.schema, url_components.netloc, ev_path, '', '', '')
+    ev_path = f"evidence/{ev_uuid}"
+    components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
     qr = "echo {} | qrencode -t ANSI".format(ev_url)
@@ -369,7 +387,7 @@ def send_snapshot_to_devicehub(snapshot, token, url):
         "Content-Type": "application/json"
     }
     try:
-        data = json.dumps(snapshot).encode('utf-8')
+        data = snapshot.encode('utf-8')
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
@@ -515,18 +533,17 @@ def main():
 
         if wb_sign_token:
             tk = wb_sign_token.encode("utf8")
-            snapshot["token_hash"] = hashlib.hash256(tk).hexdigest()
+            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
 
         if url_wallet and wb_sign_token:
             snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
         else:
             snapshot = json.dumps(snapshot)
 
-
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 
     if config['url']:
-        send_snapshot_to_devicehub(snapshot, config['token'], config['url'])
+        send_snapshot_to_devicehub(snapshot, config['token'], config['url'], snap_uuid)
 
     logger.info(_("END"))
 
