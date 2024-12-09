@@ -9,7 +9,7 @@ set -u
 set -x
 
 main() {
-        sudo apt install smartmontools lshw hwinfo dmidecode
+        sudo apt install qrencode smartmontools lshw hwinfo dmidecode inxi
 }
 
 main "${@}"
