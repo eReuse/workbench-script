@@ -9,7 +9,18 @@ set -u
 set -x
 
 main() {
-        sudo apt install smartmontools lshw hwinfo dmidecode
+        sudo apt update && \
+                apt install -y \
+                    smartmontools \
+                    lshw \
+                    hwinfo \
+                    dmidecode \
+                    inxi \
+                    python3 \
+                    pipenv \
+                    sudo \
+                    debootstrap \
+                    qemu-system
 }
 
 main "${@}"
