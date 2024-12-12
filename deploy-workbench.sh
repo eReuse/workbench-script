@@ -197,7 +197,15 @@ create_persistence_partition() {
                 tmp_rw_mount="/tmp/${rw_img_name}"
                 ${SUDO} umount -f -l "${tmp_rw_mount}" >/dev/null 2>&1 || true
                 mkdir -p "${tmp_rw_mount}"
-                ${SUDO} mount "$(pwd)/${rw_img_path}" "${tmp_rw_mount}"
+                # detect relative path, else absolute path
+                #   TODO solve this situation better
+                #   thanks https://unix.stackexchange.com/questions/256434/check-if-shell-variable-contains-an-absolute-path
+                if [ "${rw_img_path}" = "${rw_img_path#/}" ]; then
+                        mount_rw_img_path="$(pwd)/${rw_img_path}"
+                else
+                        mount_rw_img_path="${rw_img_path}"
+                fi
+                ${SUDO} mount "${mount_rw_img_path}" "${tmp_rw_mount}"
                 ${SUDO} mkdir -p "${tmp_rw_mount}"
                 if [ ! -f "settings.ini" ]; then
                         ${SUDO} cp -v settings.ini.example settings.ini
@@ -324,13 +332,11 @@ END
 echo 'Install requirements'
 
 # Install debian requirements
+# TODO converge more here with install-dependencies.sh
 apt-get install -y --no-install-recommends \
   sudo locales keyboard-configuration console-setup qrencode \
   python-is-python3 python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi < /dev/null
-
-# Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
-#apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
 
 echo 'Install sanitize requirements'
 
@@ -432,8 +438,10 @@ if [ -z "${DEBUG:-}" ]; then
 fi
 
 # cleanup bash history
-history -c
-
+# https://stackoverflow.com/questions/3199893/howto-detect-bash-from-shell-script
+if [ "\${BASH_VERSION}" ]; then
+  history -c
+fi
 CHROOT
 }
 
@@ -474,32 +482,6 @@ prepare_chroot_env() {
         prepare_app
 }
 
-
-# thanks https://willhaley.com/blog/custom-debian-live-environment/
-install_requirements() {
-        # Install requirements
-        eval "${decide_if_update_str}" && decide_if_update
-        image_deps='debootstrap
-                    squashfs-tools
-                    xorriso
-                    mtools
-                    dosfstools'
-        # secureboot:
-        #   -> extra src https://wiki.debian.org/SecureBoot/
-        #   -> extra src https://wiki.debian.org/SecureBoot/VirtualMachine
-        #   -> extra src https://wiki.debian.org/GrubEFIReinstall
-        bootloader_deps='isolinux
-                         syslinux-efi
-                         grub-pc-bin
-                         grub-efi-amd64-bin
-                         ovmf
-                         shim-signed
-                         grub-efi-amd64-signed'
-        ${SUDO} apt-get install -y \
-                ${image_deps} \
-                ${bootloader_deps}
-}
-
 # thanks https://willhaley.com/blog/custom-debian-live-environment/
 create_base_dirs() {
         mkdir -p "${ISO_PATH}"
@@ -524,7 +506,7 @@ detect_user() {
                 echo "ERROR: this script needs root or sudo permissions (current user is not part of sudo group)"
                 exit 1
                 # detect user with sudo or already on sudo src https://serverfault.com/questions/568627/can-a-program-tell-it-is-being-run-under-sudo/568628#568628
-        elif [ ! "\${userid}" = 0 ] || [ -n "\${SUDO_USER}" ]; then
+        elif [ ! "\${userid}" = 0 ] || [ -n "\${SUDO_USER:-}" ]; then
                 SUDO='sudo'
                 # jump to current dir where the script is so relative links work
                 cd "\$(dirname "\${0}")"
@@ -533,7 +515,7 @@ detect_user() {
                 # detect pure root
         elif [ "\${userid}" = 0 ]; then
                 SUDO=''
-                ISO_PATH="/opt/workbench"
+                ISO_PATH="/opt/workbench-script/iso"
         fi
 }
 END
@@ -554,7 +536,7 @@ main() {
 
         create_base_dirs
 
-        install_requirements
+        echo 'Assuming that you already executed ./install-dependencies.sh'
 
         prepare_chroot_env
 

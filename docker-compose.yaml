@@ -1,17 +1,13 @@
 
 services:
   build-iso:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.build
-    #this is needed for mount
+    init: true
+    build: .
+    # this is needed to mount inside docker
     privileged: true
+    # uncomment next two lines to test this
+    environment:
+      - DEBUG=true
     volumes:
-      - type: bind
-        source: .
-        target: /var/opt
-        read_only: true
-      - type: bind
-        source: ./iso
-        target: /var/opt/iso
-        read_only: false
+      - .:/opt/workbench-script:ro
+      - ./iso:/opt/workbench-script/iso:rw
