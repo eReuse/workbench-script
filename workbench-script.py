@@ -3,6 +3,7 @@
 import os
 import json
 import uuid
+import hashlib
 import argparse
 import configparser
 import urllib.parse
@@ -62,6 +63,7 @@ def exec_cmd(cmd):
     logger.info(_('Running command `%s`'), cmd)
     return os.popen(cmd).read()
 
+
 @logs
 def exec_cmd_erase(cmd):
     logger.info(_('Running command `%s`'), cmd)
@@ -93,7 +95,7 @@ def convert_to_legacy_snapshot(snapshot):
     snapshot.pop("operator_id")
     snapshot.pop("erase")
 
-    lshw = 'sudo lshw -xml'
+    lshw = 'sudo lshw -json'
     hwinfo = 'sudo hwinfo --reallyall'
     lspci = 'sudo lspci -vv'
 
@@ -359,10 +361,10 @@ def send_to_sign_credential(snapshot, token, url):
             res = json.loads(response_text)
             if res.get("status") == "success" and res.get("data"):
                 return res["data"]
-            return snapshot
+            return json.dumps(snapshot)
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
-            return snapshot
+            return json.dumps(snapshot)
 
     except Exception as e:
         logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
@@ -371,15 +373,12 @@ def send_to_sign_credential(snapshot, token, url):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
     # apt install qrencode
-    qr = "echo {} | qrencode -t ANSI".format(ev_url)
-    print(exec_cmd(qr))
-    print(ev_url)
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -390,7 +389,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid):
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
-            #response_text = response.read().decode('utf-8')
+            response_text = response.read().decode('utf-8')
 
         if 200 <= status_code < 300:
             logger.info(_("Snapshot successfully sent to '%s'"), url)
@@ -413,7 +412,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid):
                 print(exec_cmd(qr))
                 print(f"url: {ev_url}")
         else:
-            logger.error(_("Snapshot cannot sent to '%s'"), url)
+            logger.error(_("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"), ev_uuid, url, response_text)
 
     except Exception as e:
         logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
@@ -499,7 +498,7 @@ def load_config(config_file="settings.ini"):
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token = None, None, None, None, None, None, None
+        url, token, device, erase, legacy, url_wallet, wb_sign_token = (None,)*7
 
     return {
         'path': path,
@@ -563,6 +562,7 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
+    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
@@ -573,9 +573,9 @@ def main():
     snapshot = gen_snapshot(all_disks)
     snap_uuid = snapshot["uuid"]
 
-    if config['erase'] and config['device'] and not config.get("legacy"):
+    if config['erase'] and config['device'] and not legacy:
         snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase'] and not config.get("legacy"):
+    elif config['erase'] and not legacy:
         snapshot['erase'] = gen_erase(all_disks, config['erase'])
 
     if legacy:
@@ -595,7 +595,13 @@ def main():
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 
     if config['url']:
-        send_snapshot_to_devicehub(snapshot, config['token'], config['url'], snap_uuid)
+        send_snapshot_to_devicehub(
+            snapshot,
+            config['token'],
+            config['url'],
+            snap_uuid,
+            legacy
+        )
 
     logger.info(_("END"))
 
