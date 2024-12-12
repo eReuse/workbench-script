@@ -591,6 +591,8 @@ def main():
 
         if url_wallet and wb_sign_token:
             snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
+        else:
+            snapshot = json.dumps(snapshot)
 
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
 
