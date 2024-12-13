@@ -89,7 +89,7 @@ def convert_to_legacy_snapshot(snapshot):
     snapshot["schema_api"] = "1.0.0"
     snapshot["settings_version"] = "No Settings Version (NaN)"
     snapshot["timestamp"] = snapshot["timestamp"].replace(" ", "T")
-    snapshot["data"]["smart"] = snapshot["data"]["smartctl"]
+    snapshot["data"]["smart"] = json.loads(snapshot["data"]["smartctl"])
     snapshot["data"].pop("smartctl")
     snapshot["data"].pop("inxi")
     snapshot.pop("operator_id")
