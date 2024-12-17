@@ -327,7 +327,7 @@ echo 'Install requirements'
 apt-get install -y --no-install-recommends \
   sudo locales keyboard-configuration console-setup qrencode \
   python-is-python3 python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw nfs-common < /dev/null
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi < /dev/null
 
 # Install lshw B02.19 utility using backports (DEPRECATED in Debian 12)
 #apt install -y -t ${VERSION_CODENAME}-backports lshw  < /dev/null
