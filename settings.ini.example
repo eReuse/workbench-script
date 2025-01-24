@@ -5,8 +5,8 @@ url = http://localhost:8000/api/v1/snapshot/
 token = 5018dd65-9abd-4a62-8896-80f34ac66150
 
 # Idhub
-# wb_sign_token = "27de6ad7-cee2-4fe8-84d4-c7eea9c969c8"
-# url_wallet = "http://localhost"
+# wb_sign_token = 27de6ad7-cee2-4fe8-84d4-c7eea9c969c8
+# url_wallet = http://localhost/webhook/sign/
 
 # path = /path/to/save
 # device = your_device_name
