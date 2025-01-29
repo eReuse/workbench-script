@@ -346,15 +346,21 @@ def send_to_sign_credential(snapshot, token, url):
         logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
         return json.dumps(snapshot)
 
+# apt install qrencode
+def generate_qr_code(url, disable_qr):
+    """Generate and print QR code for the given URL."""
+    if disable_qr:
+        return
+    qr_command = "echo {} | qrencode -t ANSI".format(url)
+    print(exec_cmd(qr_command))
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
     ev_url = urllib.parse.urlunparse(components)
-    # apt install qrencode
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -375,18 +381,15 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy):
                     public_url = response.get('public_url')
                     dhid = response.get('dhid')
                     if public_url:
-                        # apt install qrencode
-                        qr = "echo {} | qrencode -t ANSI".format(public_url)
-                        print(exec_cmd(qr))
+                        generate_qr_code(public_url, disable_qr)
                         print("url: {}".format(public_url))
                     if dhid:
                         print("dhid: {}".format(dhid))
                 except Exception:
                     logger.error(response_text)
             else:
-                qr = "echo {} | qrencode -t ANSI".format(ev_url)
-                print(exec_cmd(qr))
-                print(f"url: {ev_url}")
+                generate_qr_code(ev_url, disable_qr)
+                print("url: {}".format(ev_url))
         else:
             logger.error(_("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"), ev_uuid, url, response_text)
 
@@ -415,10 +418,11 @@ def load_config(config_file="settings.ini"):
         legacy = config.get('settings', 'legacy', fallback=None)
         url_wallet = config.get('settings', 'url_wallet', fallback=None)
         wb_sign_token = config.get('settings', 'wb_sign_token', fallback=None)
+        disable_qr = config.get('settings', 'disable_qr', fallback=None)
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token = (None,)*7
+        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr = (None,)*8
 
     return {
         'path': path,
@@ -428,7 +432,8 @@ def load_config(config_file="settings.ini"):
         'erase': erase,
         'legacy': legacy,
         'wb_sign_token': wb_sign_token,
-        'url_wallet': url_wallet
+        'url_wallet': url_wallet,
+        'disable_qr': disable_qr
     }
 
 def parse_args():
@@ -522,7 +527,8 @@ def main():
             config['token'],
             config['url'],
             snap_uuid,
-            legacy
+            legacy,
+            config['disable_qr']
         )
 
     logger.info(_("END"))
