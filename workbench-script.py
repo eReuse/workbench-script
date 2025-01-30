@@ -327,6 +327,11 @@ def send_to_sign_credential(snapshot, token, url):
         }
 
         data = json.dumps(cred).encode('utf-8')
+
+        ## TODO better debug
+        #with open('/tmp/pre-vc-test.json', "wb") as f:
+        #    f.write(data)
+
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
