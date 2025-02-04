@@ -1,0 +1,13 @@
+
+services:
+  build-iso:
+    init: true
+    build: .
+    # this is needed to mount inside docker
+    privileged: true
+    # uncomment next two lines to test this
+    environment:
+      - DEBUG=true
+    volumes:
+      - .:/opt/workbench-script:ro
+      - ./iso:/opt/workbench-script/iso:rw

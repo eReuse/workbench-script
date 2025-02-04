@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+# Copyright (c) 2024 pangea.org Associació Pangea - Coordinadora Comunicació per a la Cooperació
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 import os
 import json
 import uuid
