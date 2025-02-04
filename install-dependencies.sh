@@ -47,7 +47,8 @@ main() {
                      dmidecode
                      inxi
                      python3
-                     pipenv'
+                     pipenv
+                     qrencode'
 
         # install all
         sudo apt install --no-install-recommends -y \
