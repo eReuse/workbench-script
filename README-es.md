@@ -40,8 +40,72 @@ Se puede especificar un fichero de configuración con el argumento `--config`, y
 
 workbench-script trata de ser simple y minimalista, una función principal y funciones de soporte la lectura de las diferentes funcionalidades.
 
-## Generar ISO para el USB
+## Generar una ISO para el USB
 
-Para generar la iso y preparar un usb que arranque con workbench necesitas generarte una workbench de este, con tu configuración específica
+Para crear una imagen ISO y preparar un USB que arranque con Workbench, primero debes generar una versión personalizada de Workbench con tu configuración específica. Como mínimo, necesitas un archivo `settings.ini` que contenga la URL de tu instancia de DeviceHub y el token de acceso.
 
-Ejecuta `./deploy-workbench.sh`
+Existen dos métodos para generar la ISO:
+
+### 1. Usando Docker (Método recomendado)
+
+Este método es el más sencillo y compatible con cualquier sistema operativo (incluyendo Windows y macOS). Solo necesitas tener Docker instalado en tu máquina.
+
+Una vez instalado Docker, ejecuta el siguiente comando en la terminal:
+
+```bash
+docker compose up
+```
+
+Este comando creará un contenedor de Docker con el script de Workbench y generará una ISO que incluirá tanto el script como el archivo `settings.ini` de tu directorio. La ISO resultante se guardará en:
+
+```bash
+iso/workbench_debug.iso
+```
+
+### 2. Generando la ISO directamente en tu máquina
+
+Si prefieres generar la ISO sin Docker, puedes hacerlo manualmente ejecutando el script `deploy-workbench.sh`. Para ello, primero debes instalar las dependencias necesarias con el siguiente script:
+
+```bash
+install-dependencies.sh
+```
+
+Luego, ejecuta:
+
+```bash
+deploy-workbench.sh
+```
+
+Este proceso generará la ISO en el directorio `iso/workbench_debug.iso`.
+
+> [!NOTE]
+> Se ha detectado que `deploy-workbench.sh` no funciona correctamente en distribuciones basadas en Ubuntu 24.04.
+
+## Testear la ISO Generada (Solo para linux)
+
+Para testear la ISO Generada, se proveé un Makefile. Este Makefile proporciona comandos para desplegar el sistema Workbench, gestionar dependencias y arrancar imágenes ISO con QEMU.
+
+Antes de usar el `Makefile`, instala las dependencias necesarias:
+
+```bash
+make install_dependencies
+```
+
+### Arranque de Imágenes ISO
+
+```bash
+make boot_iso ISO_FILE=iso/workbench_production.iso
+```
+
+O bien:
+
+```bash
+make boot_iso ISO_FILE=iso/workbench_debug.iso
+```
+
+También es posible arrancar desde un live USB:
+
+```bash
+make boot_iso_from_usb USB_DEVICE=/dev/sda
+```
+
