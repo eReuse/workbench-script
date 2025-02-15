@@ -1,4 +1,3 @@
-
 services:
   build-iso:
     init: true
@@ -8,6 +7,7 @@ services:
     # uncomment next two lines to test this
     environment:
       - DEBUG=true
+      - USER=root
     volumes:
       - .:/opt/workbench-script:ro
       - ./iso:/opt/workbench-script/iso:rw
