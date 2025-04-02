@@ -1,3 +1,8 @@
+.DEFAULT_GOAL := no_target
+
+no_target:
+	@echo "Error: You must provide a make target." >&2
+
 .PHONY: deploy
 deploy:
 	./deploy-workbench.sh
