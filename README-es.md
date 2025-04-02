@@ -1,111 +1,146 @@
+# workbench-script
+
 ## Resumen
 
-1. workbench solo hace dos funcionalidades:
-    1. recopila datos del PC y los guarda como fichero snapshot o los sube a devicehub
-    2. opcionalmente borra discos
+workbench-script es el componente de recopilación de datos del ecosistema [eReuse](https://ereuse.org/). Su función principal es extraer información sobre los componentes de un PC y generar un fichero snapshot en formato JSON que puede utilizarse para inventario, trazabilidad y diagnóstico en procesos de reutilización y reciclaje de dispositivos electrónicos.
 
-### Hoja de ruta (2024)
+El programa trata de ser simple y minimalista, está diseñado para funcionar por defecto de forma intuitiva y sin configuración previa. Este programa solo hace esencialmente dos funcionalidades:
 
-A través de un proyecto de ISOC se van a trabajar las dos funcionalidades siguientes:
+1. Recopila datos del PC y los guarda como fichero *snapshot* y, opcionalmente, los puede enviar al servicio de inventario [devicehub-django](https://farga.pangea.org/ereuse/devicehub-django/)
+2. Opcionalmente borra discos (esta característica está en desarrollo y todavía no se puede probar)
 
-- F1: Borrado de discos SSD
-- F2: Firma criptográfica de snapshots, conversión de los snapshots en credenciales verificables o evidencias
+Modalidades de ejecución del programa:
 
-## Detalle funcionalidad
+1. [Arranque desde memoria USB](#arranque-desde-memoria-usb)
+2. [Arranque desde red](#arranque-desde-red) (mediante [PXE](https://es.wikipedia.org/wiki/Entorno_de_ejecuci%C3%B3n_de_prearranque))
+3. [Arranque desde tu propio sistema operativo](#arranque-desde-tu-propio-sistema-operativo). Con propósito de prueba rápida o desarrollo
 
-1. Genera snapshot
-2. Guarda snapshot en el path que indicas
-3. Envía a una URL si le pasas URL y token
-4. Borra
-   1. borrado basico como hay ahora
-   2. borrado baseline como hay ahora
-   3. borrado enhanced como hay ahora
-   4. borrado ata para quien lo soporte
-   5. borrado nvme para quien lo soporte
+Modalidades de envío de los *snapshots*:
 
-Comentarios sobre el borrado:
+1. Envío simple (sin firmar).
+2. Con firma (en formato de [credencial verificable](https://en.wikipedia.org/wiki/Verifiable_credentials)) y mediante el servicio [idhub](https://farga.pangea.org/ereuse/idhub). Este servicio se puede probar, pero de momento es experimental.
+3. En compatibilidad con el anterior servicio obsoleto de [devicehub-teal](https://github.com/eReuse/devicehub-teal).
 
-1. Comentario de borrado por encriptación: no borra por encriptacion porque lo unico que hace es quitar las claves de encriptacion. Depende de que tu disco esté cifrado. Si tu disco no está cifrado por hardware, entonces no funcionará este tipo de borrado (pendiente revisar).
-2. El borrado 4.4 y 4.5 no siguen especificamente un estándar, pero creo que son mejores.
-
-## Uso del script
-
-Detalles del uso del script para técnicos
+## Configuración del script
 
 El script está diseñado para funcionar por defecto de forma intuitiva y sin configuración previa
 
 Se puede especificar un fichero de configuración con el argumento `--config`, y en `settings.ini.example` se puede encontrar un ejemplo de configuración
 
-## Enfoque
+## Arranque desde memoria USB
 
-workbench-script trata de ser simple y minimalista, una función principal y funciones de soporte la lectura de las diferentes funcionalidades.
+El [arranque desde memoria USB](https://es.wikipedia.org/wiki/Memoria_USB) es la forma más sencilla de arrancar workbench, dado que es un entorno con todas las herramientas para poder analizar los componentes del PC.
 
-## Generar una ISO para el USB
+### Modificar la partición persistente
+
+En esta configuración, workbench-script usa una partición persistente [FAT16](https://1984.lsi.us.es/wiki-ssoo/index.php/FAT#FAT_16) que guarda:
+
+1. La configuración de ejecución del programa.
+2. Snapshots de PCs previamente analizados usando la herramienta.
+
+Para entrar, en *Windows* verás que esta se monta automáticamente, es una unidad que por defecto tiene 100 MB.
+
+Para modificarla desde GNU/Linux la partición es oculta y la tienes que encontrar (con `lsblk` o `dmesg`) y montar manualmente con el comando `mount`.
+
+> [!NOTE]
+> FAT16? Sí, nos gustaría mejorar el sistema de montaje de la partición persistente. Bienvenidas las sugerencias
+
+### Avanzado: Generar una ISO para el USB
+
+No es necesario generar tu propia ISO para poder usar workbench-script, si quieres modificar la configuración
 
 Para crear una imagen ISO y preparar un USB que arranque con Workbench, primero debes generar una versión personalizada de Workbench con tu configuración específica. Como mínimo, necesitas un archivo `settings.ini` que contenga la URL de tu instancia de DeviceHub y el token de acceso.
 
 Existen dos métodos para generar la ISO:
 
-### 1. Usando Docker (Método recomendado)
+#### Opción 1. Generar la ISO con Docker (Método recomendado)
 
-Este método es el más sencillo y compatible con cualquier sistema operativo (incluyendo Windows y macOS). Solo necesitas tener Docker instalado en tu máquina.
+Este método es el más sencillo y compatible con cualquier sistema operativo (incluyendo Windows, macOS y otras distribuciones de GNU/Linux o BSD). Solo necesitas tener Docker instalado en tu máquina.
+
+> [!NOTE]
+> Se ha detectado que `deploy-workbench.sh` no funciona correctamente en distribuciones basadas en Ubuntu 24.04.
 
 Una vez instalado Docker, ejecuta el siguiente comando en la terminal:
 
-```bash
+```sh
 docker compose up
 ```
 
 Este comando creará un contenedor de Docker con el script de Workbench y generará una ISO que incluirá tanto el script como el archivo `settings.ini` de tu directorio. La ISO resultante se guardará en:
 
-```bash
+```sh
 iso/workbench_debug.iso
 ```
 
-### 2. Generando la ISO directamente en tu máquina
+#### Opción 2. Generando la ISO directamente en tu máquina
+
+> [!NOTE]
+> `deploy-workbench.sh` se ha diseñado para funcionar en debian estable, en otros sistemas podría no funcionar, usa entonces el método con docker
 
 Si prefieres generar la ISO sin Docker, puedes hacerlo manualmente ejecutando el script `deploy-workbench.sh`. Para ello, primero debes instalar las dependencias necesarias con el siguiente script:
 
-```bash
-install-dependencies.sh
+```sh
+./install-dependencies.sh
 ```
 
 Luego, ejecuta:
 
-```bash
-deploy-workbench.sh
+```sh
+./deploy-workbench.sh
 ```
 
 Este proceso generará la ISO en el directorio `iso/workbench_debug.iso`.
 
-> [!NOTE]
-> Se ha detectado que `deploy-workbench.sh` no funciona correctamente en distribuciones basadas en Ubuntu 24.04.
+#### Probar arranque de la ISO
 
-## Testear la ISO Generada (Solo para linux)
-
-Para testear la ISO Generada, se proveé un Makefile. Este Makefile proporciona comandos para desplegar el sistema Workbench, gestionar dependencias y arrancar imágenes ISO con QEMU.
+Puedes probar la ISO desde tu propio equipo con las utilidades disponibles en el Makefile. Este Makefile proporciona comandos para desplegar el sistema Workbench, gestionar dependencias y arrancar imágenes ISO con QEMU.
 
 Antes de usar el `Makefile`, instala las dependencias necesarias:
 
-```bash
-make install_dependencies
+```sh
+./install-dependencies.sh
 ```
 
 ### Arranque de Imágenes ISO
 
-```bash
+```sh
 make boot_iso ISO_FILE=iso/workbench_production.iso
 ```
 
 O bien:
 
-```bash
+```sh
 make boot_iso ISO_FILE=iso/workbench_debug.iso
 ```
 
 También es posible arrancar desde un live USB:
 
-```bash
+```sh
 make boot_iso_from_usb USB_DEVICE=/dev/sda
 ```
 
+## Arranque desde red
+
+[Arranque desde red](https://es.wikipedia.org/wiki/Arranque_desde_red) es un poco más laborioso que el arranque con memoria USB pero más eficiente para aquellas entidades que analizan habitualmente muchos equipos al día
+
+Como requerimiento necesitarás un servidor al que los otros equipos se conectarán para que estos puedan descargar la ISO de workbench-script, adicionalmente, en este servidor actuará como la *memoria persistente*: servirá la configuración que se va a ejecutar en los PCs, y guardará los snapshots resultantes.
+
+Este repositorio dispone de una instalación automatizada pero no idempotente, la iremos mejorando progresivamente, visita aquí el manual: [pxe/README-es.md](pxe/README-es.md)
+
+## Arranque desde tu propio sistema operativo
+
+El script solo necesita `python` en tu sistema y no tiene dependencias externas, el problema es que necesita de otros programas que analizan los componentes y quizá no tengas instalados, lo puedes hacer con el siguiente comando:
+
+```sh
+./install-dependencies.sh
+```
+
+Esta sección también la podríamos considerar en cierta manera, un rápido *entorno de desarrollo* de la herramienta.
+
+## Acerca de eReuse
+
+workbench-script es una herramienta desarrollada por [eReuse](https://ereuse.org/) que permite recopilar datos de los PCs con el propósito de aportar trazabilidad durante todo su ciclo de vida. Forma parte del ecosistema de software libre de eReuse, orientado a fomentar la reutilización de dispositivos electrónicos, facilitar su diagnóstico y asegurar una gestión responsable desde el uso hasta el reciclaje.
+
+## Licencia
+
+DeviceHub está licenciado como [GNU Affero General Public License v3.0](LICENSE).
