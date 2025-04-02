@@ -12,7 +12,7 @@ main() {
         sudo apt update
 
         # system dependencies
-        host_deps='sudo'
+        host_deps='sudo make'
         # thanks https://stackoverflow.com/questions/23513045/how-to-check-if-a-process-is-running-inside-docker-container
         if [ ! "${DOCKER_BUILD}" ]; then
                 host_deps="${host_deps} qemu-system"
