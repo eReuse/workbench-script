@@ -21,15 +21,31 @@ Modalidades de envío de los *snapshots*:
 2. Con firma (en formato de [credencial verificable](https://en.wikipedia.org/wiki/Verifiable_credentials)) y mediante el servicio [idhub](https://farga.pangea.org/ereuse/idhub). Este servicio se puede probar, pero de momento es experimental.
 3. En compatibilidad con el anterior servicio obsoleto de [devicehub-teal](https://github.com/eReuse/devicehub-teal).
 
-## Configuración del script
+## Configuración del programa
 
-El script está diseñado para funcionar por defecto de forma intuitiva y sin configuración previa
+workbench-script está diseñado para funcionar por defecto de forma intuitiva y sin configuración previa.
 
-Se puede especificar un fichero de configuración con el argumento `--config`, y en `settings.ini.example` se puede encontrar un ejemplo de configuración
+Se puede especificar un fichero de configuración con el argumento `--config`, y en `settings.ini.example` se puede encontrar un ejemplo de configuración.
+
+Todos las configuraciones son opcionales, y están desactivadas o comentadas en [settings.ini.example](./settings.ini.example)
+
+Normalmente la configuración básica consta de:
+
+- url: URL hacia devicehub
+- token: auth_token de devicehub
+
+Otras configuraciones de interés:
+
+- legacy: para retrocompatibilidad con la anterior versión de devicehub
+- url_wallet: URL hacia idhub (en caso de querer firmar con credenciales verificables)
+- wb_sign_token: auth_token para usuario de idhub
+- disable_qr: no mostrar QR en el registro de un equipo (útil en modo desarrollo)
 
 ## Arranque desde memoria USB
 
 El [arranque desde memoria USB](https://es.wikipedia.org/wiki/Memoria_USB) es la forma más sencilla de arrancar workbench, dado que es un entorno con todas las herramientas para poder analizar los componentes del PC.
+
+Puedes descargar la última versión estable [aquí](https://docs.ereuse.org/workbench-script-iso/v2025.1.iso), tiene una configuración por defecto que está enlazada con el devicehub de https://demo.ereuse.org para modificar esta configuración, necesitas modificar la partición persistente.
 
 ### Modificar la partición persistente
 
