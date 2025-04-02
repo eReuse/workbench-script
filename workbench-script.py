@@ -17,6 +17,7 @@ import locale
 import logging
 
 from datetime import datetime
+import time
 
 
 SNAPSHOT_BASE = {
@@ -29,7 +30,6 @@ SNAPSHOT_BASE = {
     'data': {},
     'erase': []
 }
-
 
 
 ## Utility Functions ##
@@ -364,7 +364,7 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, max_retries=5):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -374,35 +374,48 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-    try:
-        data = snapshot.encode('utf-8')
-        request = urllib.request.Request(url, data=data, headers=headers)
-        with urllib.request.urlopen(request) as response:
-            status_code = response.getcode()
-            response_text = response.read().decode('utf-8')
 
-        if 200 <= status_code < 300:
-            logger.info(_("Snapshot successfully sent to '%s'"), url)
-            if legacy:
-                try:
-                    response = json.loads(response_text)
-                    public_url = response.get('public_url')
-                    dhid = response.get('dhid')
-                    if public_url:
-                        generate_qr_code(public_url, disable_qr)
-                        print("url: {}".format(public_url))
-                    if dhid:
-                        print("dhid: {}".format(dhid))
-                except Exception:
-                    logger.error(response_text)
+    retries = 0
+    while retries < max_retries:
+        try:
+            data = snapshot.encode('utf-8')
+            request = urllib.request.Request(url, data=data, headers=headers)
+            with urllib.request.urlopen(request) as response:
+                status_code = response.getcode()
+                response_text = response.read().decode('utf-8')
+
+            if 200 <= status_code < 300:
+                logger.info(_("Snapshot successfully sent to '%s'"), url)
+                if legacy:
+                    try:
+                        response = json.loads(response_text)
+                        public_url = response.get('public_url')
+                        dhid = response.get('dhid')
+                        if public_url:
+                            generate_qr_code(public_url, disable_qr)
+                            print("url: {}".format(public_url))
+                        if dhid:
+                            print("dhid: {}".format(dhid))
+                    except Exception:
+                        logger.error(response_text)
+                else:
+                    generate_qr_code(ev_url, disable_qr)
+                    print("url: {}".format(ev_url))
+                return
             else:
-                generate_qr_code(ev_url, disable_qr)
-                print("url: {}".format(ev_url))
-        else:
-            logger.error(_("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"), ev_uuid, url, response_text)
+                logger.error(
+                    _("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"), ev_uuid, url, response_text)
+        except Exception as e:
+            logger.error(
+                _("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
-    except Exception as e:
-        logger.error(_("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        retries += 1
+        if retries < max_retries:
+            logger.info(_("Retrying... (%d/%d)"), retries, max_retries)
+            time.sleep(5)  # TODO arbitrary number of seconds.
+
+    logger.error(
+        _("Failed to send snapshot to URL '%s' after %d attempts"), url, max_retries)
 
 
 def load_config(config_file="settings.ini"):
