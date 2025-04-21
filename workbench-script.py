@@ -406,9 +406,17 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
                 logger.error(
                     _("Snapshot %s not remotely sent to URL '%s'. Server responded with error:\n  %s"), ev_uuid, url, response_text)
         except Exception as e:
-            logger.error(
-                _("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
+            try:
+                error_body = json.loads(e.read())
+                if error_body.get("status"):
+                    logger.error(error_body["status"])
+                else:
+                    logger.error(error_body)
+                retries = max_retries
+            except Exception:
+                logger.error(
+                    _("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n"), url)
         retries += 1
         if retries < max_retries:
             logger.info(_("Retrying... (%d/%d)"), retries, max_retries)
