@@ -320,13 +320,7 @@ def send_to_sign_credential(snapshot, token, url):
         cred = {
             "type": "DeviceSnapshotV1",
             "save": False,
-            "data": {
-                "operator_id": snapshot["operator_id"],
-                "dmidecode": snapshot["data"]["dmidecode"],
-                "inxi": snapshot["data"]["inxi"],
-                "smartctl": snapshot["data"]["smartctl"],
-                "uuid": snapshot["uuid"],
-            }
+            "data": snapshot
         }
 
         data = json.dumps(cred).encode('utf-8')
