@@ -292,7 +292,8 @@ prepare_app() {
         #${SUDO} cp requirements.txt "${workbench_dir}/"
 
         # startup script execution
-        cat > "${ISO_PATH}/chroot/root/.profile" <<END
+        ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+        ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
 if [ -f /tmp/workbench_lock ]; then
         return 0
 else
