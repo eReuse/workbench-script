@@ -45,7 +45,13 @@ Otras configuraciones de interés:
 
 El [arranque desde memoria USB](https://es.wikipedia.org/wiki/Memoria_USB) es la forma más sencilla de arrancar workbench, dado que es un entorno con todas las herramientas para poder analizar los componentes del PC.
 
-Puedes descargar la última versión estable [aquí](https://docs.ereuse.org/workbench-script-iso/v2025.1.iso), tiene una configuración por defecto que está enlazada con el devicehub de https://demo.ereuse.org para modificar esta configuración, necesitas modificar la partición persistente.
+Puedes descargar la ISO de la última versión estable [aquí](https://docs.ereuse.org/workbench-script-iso/v2025.1.iso).
+
+Una vez descargada, utiliza la herramienta de [balenaEtcher](https://etcher.balena.io/) para cargar la ISO en la memoria USB.
+
+La ISO tiene por un lado el entorno necesario para ejecutar workbench-script y por otro, una partición persistente con la configuración y los ficheros que se irán generando.
+
+Esta partición persistente tiene una configuración por defecto que está enlazada con el devicehub de https://demo.ereuse.org para modificar esta configuración, necesitas modificar la partición persistente.
 
 ### Modificar la partición persistente
 
