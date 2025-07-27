@@ -309,6 +309,18 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
+def http_post(url, data, headers):
+    """Send a POST request with given headers and JSON data."""
+    try:
+        request = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(request) as response:
+            status_code = response.getcode()
+            response_text = response.read().decode('utf-8')
+    except urllib.error.HTTPError as e:
+        status_code = e.code
+        response_text = e.read().decode('utf-8')
+        logger.error("HTTPError %s: %s", status_code, response_text)
+    return status_code, response_text
 
 def send_snapshot_to_idhub(snapshot, token, url):
     """Send snapshot to be signed as a credential"""
@@ -326,19 +338,11 @@ def send_snapshot_to_idhub(snapshot, token, url):
 
         data = json.dumps(cred).encode('utf-8')
 
-        ## TODO better debug
+        ## uncomment to save precredential
         #with open('/tmp/pre-vc-test.json', "wb") as f:
         #    f.write(data)
 
-        try:
-            request = urllib.request.Request(url, data=data, headers=headers)
-            with urllib.request.urlopen(request) as response:
-                status_code = response.getcode()
-                response_text = response.read().decode('utf-8')
-        except urllib.error.HTTPError as e:
-            status_code = e.code
-            response_text = e.read().decode('utf-8')
-            logger.error("HTTPError %s: %s", status_code, response_text)
+        status_code, response_text = http_post(url, data, headers)
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
@@ -380,16 +384,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
     while retries < http_max_retries:
         try:
             data = snapshot.encode('utf-8')
-
-            try:
-                request = urllib.request.Request(url, data=data, headers=headers)
-                with urllib.request.urlopen(request) as response:
-                    status_code = response.getcode()
-                    response_text = response.read().decode('utf-8')
-            except urllib.error.HTTPError as e:
-                status_code = e.code
-                response_text = e.read().decode('utf-8')
-                logger.error("HTTPError %s: %s", status_code, response_text)
+            status_code, response_text = http_post(url, data, headers)
 
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
