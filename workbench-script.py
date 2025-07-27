@@ -329,10 +329,15 @@ def send_to_sign_credential(snapshot, token, url):
         #with open('/tmp/pre-vc-test.json', "wb") as f:
         #    f.write(data)
 
-        request = urllib.request.Request(url, data=data, headers=headers)
-        with urllib.request.urlopen(request) as response:
-            status_code = response.getcode()
-            response_text = response.read().decode('utf-8')
+        try:
+            request = urllib.request.Request(url, data=data, headers=headers)
+            with urllib.request.urlopen(request) as response:
+                status_code = response.getcode()
+                response_text = response.read().decode('utf-8')
+        except urllib.error.HTTPError as e:
+            status_code = e.code
+            response_text = e.read().decode('utf-8')
+            logger.error("HTTPError %s: %s", status_code, response_text)
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
@@ -373,10 +378,16 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
     while retries < max_retries:
         try:
             data = snapshot.encode('utf-8')
-            request = urllib.request.Request(url, data=data, headers=headers)
-            with urllib.request.urlopen(request) as response:
-                status_code = response.getcode()
-                response_text = response.read().decode('utf-8')
+
+            try:
+                request = urllib.request.Request(url, data=data, headers=headers)
+                with urllib.request.urlopen(request) as response:
+                    status_code = response.getcode()
+                    response_text = response.read().decode('utf-8')
+            except urllib.error.HTTPError as e:
+                status_code = e.code
+                response_text = e.read().decode('utf-8')
+                logger.error("HTTPError %s: %s", status_code, response_text)
 
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
