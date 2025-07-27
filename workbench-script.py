@@ -368,7 +368,7 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
     """Send snapshot to be stored in devicehub inventory service"""
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
@@ -414,7 +414,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
         retries += 1
         if retries <= http_max_retries:
             logger.info(_("Retrying... (%d/%d)"), retries, http_max_retries)
-            time.sleep(5)  # TODO arbitrary number of seconds.
+            time.sleep(http_retry_delay)
 
     logger.error(
         _("Failed to send snapshot to URL '%s' after %d attempts"), url, http_max_retries)
@@ -443,6 +443,7 @@ def load_config(config_file="settings.ini"):
         wb_sign_token = config.get('settings', 'wb_sign_token', fallback=None)
         disable_qr = config.get('settings', 'disable_qr', fallback=None)
         http_max_retries = int(config.get('settings', 'http_max_retries', fallback=1))
+        http_retry_delay = int(config.get('settings', 'http_retry_delay', fallback=5))
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
@@ -458,7 +459,8 @@ def load_config(config_file="settings.ini"):
         'wb_sign_token': wb_sign_token,
         'url_wallet': url_wallet,
         'disable_qr': disable_qr,
-        'http_max_retries': http_max_retries
+        'http_max_retries': http_max_retries,
+        'http_retry_delay': http_retry_delay
     }
 
 def parse_args():
@@ -555,6 +557,7 @@ def main():
             legacy,
             config['disable_qr'],
             config['http_max_retries']
+            config['http_retry_delay']
         )
 
     logger.info(_("END"))
