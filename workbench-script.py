@@ -310,7 +310,8 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
 
-def send_to_sign_credential(snapshot, token, url):
+def send_snapshot_to_idhub(snapshot, token, url):
+    """Send snapshot to be signed as a credential"""
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -350,7 +351,7 @@ def send_to_sign_credential(snapshot, token, url):
             return json.dumps(snapshot)
 
     except Exception as e:
-        logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        logger.error(_("Credential not remotely signed by IdHub URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
         return json.dumps(snapshot)
 
 # apt install qrencode
@@ -364,6 +365,7 @@ def generate_qr_code(url, disable_qr):
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
 def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, max_retries=5):
+    """Send snapshot to be stored in devicehub inventory service"""
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -541,7 +543,7 @@ def main():
             snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
 
         if url_wallet and wb_sign_token:
-            snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
+            snapshot = send_snapshot_to_idhub(snapshot, wb_sign_token, url_wallet)
         else:
             snapshot = json.dumps(snapshot)
 
