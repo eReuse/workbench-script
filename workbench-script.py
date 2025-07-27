@@ -556,7 +556,7 @@ def main():
             snap_uuid,
             legacy,
             config['disable_qr'],
-            config['http_max_retries']
+            config['http_max_retries'],
             config['http_retry_delay']
         )
 
