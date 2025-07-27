@@ -309,8 +309,21 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
+def http_post(url, data, headers):
+    """Send a POST request with given headers and JSON data."""
+    try:
+        request = urllib.request.Request(url, data=data, headers=headers)
+        with urllib.request.urlopen(request) as response:
+            status_code = response.getcode()
+            response_text = response.read().decode('utf-8')
+    except urllib.error.HTTPError as e:
+        status_code = e.code
+        response_text = e.read().decode('utf-8')
+        logger.error("HTTPError %s: %s", status_code, response_text)
+    return status_code, response_text
 
-def send_to_sign_credential(snapshot, token, url):
+def send_snapshot_to_idhub(snapshot, token, url):
+    """Send snapshot to be signed as a credential"""
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -320,25 +333,16 @@ def send_to_sign_credential(snapshot, token, url):
         cred = {
             "type": "DeviceSnapshotV1",
             "save": False,
-            "data": {
-                "operator_id": snapshot["operator_id"],
-                "dmidecode": snapshot["data"]["dmidecode"],
-                "inxi": snapshot["data"]["inxi"],
-                "smartctl": snapshot["data"]["smartctl"],
-                "uuid": snapshot["uuid"],
-            }
+            "data": snapshot
         }
 
         data = json.dumps(cred).encode('utf-8')
 
-        ## TODO better debug
+        ## uncomment to save precredential
         #with open('/tmp/pre-vc-test.json', "wb") as f:
         #    f.write(data)
 
-        request = urllib.request.Request(url, data=data, headers=headers)
-        with urllib.request.urlopen(request) as response:
-            status_code = response.getcode()
-            response_text = response.read().decode('utf-8')
+        status_code, response_text = http_post(url, data, headers)
 
         if 200 <= status_code < 300:
             logger.info(_("Credential successfully signed"))
@@ -351,7 +355,7 @@ def send_to_sign_credential(snapshot, token, url):
             return json.dumps(snapshot)
 
     except Exception as e:
-        logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        logger.error(_("Credential not remotely signed by IdHub URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
         return json.dumps(snapshot)
 
 # apt install qrencode
@@ -364,7 +368,8 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, max_retries=5):
+def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
+    """Send snapshot to be stored in devicehub inventory service"""
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -375,14 +380,11 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
         "Content-Type": "application/json"
     }
 
-    retries = 0
-    while retries < max_retries:
+    retries = 1
+    while retries < http_max_retries:
         try:
             data = snapshot.encode('utf-8')
-            request = urllib.request.Request(url, data=data, headers=headers)
-            with urllib.request.urlopen(request) as response:
-                status_code = response.getcode()
-                response_text = response.read().decode('utf-8')
+            status_code, response_text = http_post(url, data, headers)
 
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
@@ -410,12 +412,12 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
                 _("Snapshot not remotely sent to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
 
         retries += 1
-        if retries < max_retries:
-            logger.info(_("Retrying... (%d/%d)"), retries, max_retries)
-            time.sleep(5)  # TODO arbitrary number of seconds.
+        if retries <= http_max_retries:
+            logger.info(_("Retrying... (%d/%d)"), retries, http_max_retries)
+            time.sleep(http_retry_delay)
 
     logger.error(
-        _("Failed to send snapshot to URL '%s' after %d attempts"), url, max_retries)
+        _("Failed to send snapshot to URL '%s' after %d attempts"), url, http_max_retries)
 
 
 def load_config(config_file="settings.ini"):
@@ -440,6 +442,8 @@ def load_config(config_file="settings.ini"):
         url_wallet = config.get('settings', 'url_wallet', fallback=None)
         wb_sign_token = config.get('settings', 'wb_sign_token', fallback=None)
         disable_qr = config.get('settings', 'disable_qr', fallback=None)
+        http_max_retries = int(config.get('settings', 'http_max_retries', fallback=1))
+        http_retry_delay = int(config.get('settings', 'http_retry_delay', fallback=5))
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
@@ -454,7 +458,9 @@ def load_config(config_file="settings.ini"):
         'legacy': legacy,
         'wb_sign_token': wb_sign_token,
         'url_wallet': url_wallet,
-        'disable_qr': disable_qr
+        'disable_qr': disable_qr,
+        'http_max_retries': http_max_retries,
+        'http_retry_delay': http_retry_delay
     }
 
 def parse_args():
@@ -536,7 +542,7 @@ def main():
             snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
 
         if url_wallet and wb_sign_token:
-            snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
+            snapshot = send_snapshot_to_idhub(snapshot, wb_sign_token, url_wallet)
         else:
             snapshot = json.dumps(snapshot)
 
@@ -549,7 +555,9 @@ def main():
             config['url'],
             snap_uuid,
             legacy,
-            config['disable_qr']
+            config['disable_qr'],
+            config['http_max_retries']
+            config['http_retry_delay']
         )
 
     logger.info(_("END"))
