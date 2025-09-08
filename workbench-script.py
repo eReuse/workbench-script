@@ -499,6 +499,137 @@ def prepare_logger():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+def handle_interactive_mode(mode, config):
+    print(_("\n=== Configuration Mode ==="))
+    print(_(" Step 1: Disconnect all displays except the ones required to run Workbench."))
+    print(_("These remaining displays will be EXCLUDED from analysis."))
+    input(_("\nPress ENTER once you are ready..."))
+
+    while True:
+        excluded_monitors = {}
+        try:
+            monitors = display_detect.get_displays()
+            print(_("\n Detected displays to exclude:"))
+            for m in monitors:
+                print(m)
+
+            if input(_("Are u sure? y/n: ")) == "y":
+                excluded_monitors = monitors
+                break
+            else:
+                continue
+        except Exception as e:
+            print(_("Error detectando pantallas: "), e)
+
+    #TODO Disks exclusion
+    print(_("\n Initial configuration done."))
+    print(_("Excluded displays: "), [m.get("connector") for m in excluded_monitors])
+
+    if mode == "display":
+        #TODO whie loop
+        display_mode(config, excluded_monitors)
+
+def display_mode(config, excluded_monitors):
+    try:
+        m = display_detect.get_displays() or []
+        #excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+        excluded_hex ={}
+        displays = [
+            m for m in m if m.get("edid_hex") not in excluded_hex
+        ]
+        if not displays:
+            print(_("\nNo additional displays found for analysis. ENTER to rety"))
+            asd = input()
+            return
+
+        print(_("\n Displays selected for analysis:"),
+                [m.get("connector") for m in displays])
+        snaps = []
+        for display in displays:
+            print(_("Created snapshot for display:"), display.get("connector"))
+            snapshot, snap_uuid = create_display_snapshot(display, config)
+            snaps.append((snapshot, snap_uuid))
+
+        for snap, snap_uuid in snaps:
+            save_snapshot_in_disk(snap, config['path'], snap_uuid)
+
+            if config['url']:
+                print(_("Saved all display snapshots on disk. Trying for server..."))
+                breakpoint()
+                send_snapshot_to_devicehub(
+                    snap,
+                    config['token'],
+                    config['url'],
+                    uuid,
+                    legacy=False,
+                    disable_qr=config['disable_qr']
+                )
+
+                logger.info(_("END"))
+                return
+
+        else:
+            print(_("\nNo additional displays found for analysis."))
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+    pass
+
+def create_display_snapshot(display, config):
+    data = {}
+    data["edid_hex"]= display["edid_hex"]
+
+    decoded_bytes = subprocess.run(
+        ["edid-decode", '-s', '-n',  display["edid_path"] ],
+        capture_output=True,
+        text=False,
+        check=True,
+    ).stdout
+
+    decoded = decoded_bytes.decode("utf-8", errors="replace")
+
+    edid_dict = {}
+    current_section = None
+
+    for line in decoded.splitlines():
+        line = line.rstrip()
+        if not line:
+            continue
+
+        if not line.startswith(" "):
+            current_section = line.strip(":")
+            edid_dict[current_section] = {}
+            continue
+
+        if ":" in line:
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            edid_dict[current_section][key] = value
+        else:
+            edid_dict[current_section].setdefault("_misc", []).append(line.strip())
+
+    data['edid-decode'] = edid_dict
+
+    snapshot = SNAPSHOT_BASE.copy()
+    snapshot['data'] = data
+    snap_uuid = snapshot["uuid"]
+    url_wallet = config.get("url_wallet")
+    wb_sign_token = config.get("wb_sign_token")
+
+    if wb_sign_token:
+        tk = wb_sign_token.encode("utf8")
+        snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
+
+    if url_wallet and wb_sign_token:
+        snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
+    else:
+        snapshot = json.dumps(snapshot)
+
+    return snapshot, snap_uuid
+
+
 def main():
     prepare_lang()
     prepare_logger()
@@ -518,6 +649,11 @@ def main():
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
     if os.geteuid() != 0:
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
+
+    # --- Interactive Mode ---
+    if config.get("display_server") or config.get("display_disk") :
+        handle_interactive_mode("display",config)
+        exit(0)
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
