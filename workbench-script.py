@@ -440,10 +440,12 @@ def load_config(config_file="settings.ini"):
         url_wallet = config.get('settings', 'url_wallet', fallback=None)
         wb_sign_token = config.get('settings', 'wb_sign_token', fallback=None)
         disable_qr = config.get('settings', 'disable_qr', fallback=None)
+        display_server = config.get('settings', "display_server", fallback=None)
+        disk_server = config.get('settings', "disk_server", fallback=None)
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr = (None,)*8
+        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr, display_server, disk_server = (None,)*10
 
     return {
         'path': path,
@@ -451,6 +453,8 @@ def load_config(config_file="settings.ini"):
         'token': token,
         'device': device,
         'erase': erase,
+        'display_server': display_server,
+        'disk_server': disk_server,
         'legacy': legacy,
         'wb_sign_token': wb_sign_token,
         'url_wallet': url_wallet,
