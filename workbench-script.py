@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import os
+import glob
 import json
 import uuid
 import hashlib
@@ -277,6 +278,7 @@ def get_data(all_disks):
 
 def gen_snapshot(all_disks):
     snapshot = SNAPSHOT_BASE.copy()
+    #get_data should be create_snapshot_data
     snapshot['data'] = get_data(all_disks)
     return snapshot
 
@@ -499,6 +501,43 @@ def prepare_logger():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+def get_displays():
+    displays = []
+
+    #https://askubuntu.com/questions/81370/how-to-create-extract-the-edid-for-from-a-monitor
+    for edid_file in glob.glob("/sys/class/drm/*/edid"):
+        connector_dir = os.path.dirname(edid_file)
+        status_file = os.path.join(connector_dir, "status")
+
+        connector_name = os.path.basename(connector_dir)
+
+        status = None
+        if os.path.isfile(status_file):
+            try:
+                with open(status_file, "r") as f:
+                    status = f.read().strip()
+            except Exception as e:
+                print(f"Error reading {status_file}: {e}")
+
+        if status == "connected":
+            edid_hex = None
+            try:
+                with open(edid_file, "rb") as f:
+                    edid_data = f.read()
+                    edid_hex = edid_data.hex()
+            except Exception as e:
+                print(f"Error reading EDID from {edid_file}: {e}")
+
+            monitor = {
+                "connector": connector_name,
+                "status": status,
+                "edid_path": edid_file,
+                "edid_hex": edid_hex
+            }
+            displays.append(monitor)
+
+    return displays
+
 def handle_interactive_mode(mode, config):
     print(_("\n=== Configuration Mode ==="))
     print(_(" Step 1: Disconnect all displays except the ones required to run Workbench."))
@@ -508,22 +547,22 @@ def handle_interactive_mode(mode, config):
     while True:
         excluded_monitors = {}
         try:
-            monitors = display_detect.get_displays()
+            monitors = get_displays()
             print(_("\n Detected displays to exclude:"))
             for m in monitors:
-                print(m)
+                print("- {}".format(m["connector"]))
 
-            if input(_("Are u sure? y/n: ")) == "y":
+            if input(_("\n Are u sure? y/n: ")) == "y":
                 excluded_monitors = monitors
                 break
             else:
                 continue
         except Exception as e:
-            print(_("Error detectando pantallas: "), e)
+            print(_("Error while detecting displays: "), e)
 
     #TODO Disks exclusion
     print(_("\n Initial configuration done."))
-    print(_("Excluded displays: "), [m.get("connector") for m in excluded_monitors])
+    print(_("# # # Excluded displays: "), [m.get("connector") for m in excluded_monitors])
 
     if mode == "display":
         #TODO whie loop
@@ -531,19 +570,25 @@ def handle_interactive_mode(mode, config):
 
 def display_mode(config, excluded_monitors):
     try:
-        m = display_detect.get_displays() or []
-        #excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
-        excluded_hex ={}
-        displays = [
-            m for m in m if m.get("edid_hex") not in excluded_hex
-        ]
-        if not displays:
-            print(_("\nNo additional displays found for analysis. ENTER to rety"))
-            asd = input()
-            return
 
-        print(_("\n Displays selected for analysis:"),
-                [m.get("connector") for m in displays])
+        while True:
+            excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+            excluded_hex ={}
+            displays = [
+                m for m in m if m.get("edid_hex") not in excluded_hex
+            ]
+            if not displays:
+                print(_("\nNo additional displays found for analysis. ENTER to rety"))
+                return
+
+            print(_("\n Found displays:"),
+                    [m.get("connector") for m in displays])
+
+            if input(_("\n Do you want to create a snapshot of these display/s ? y/n: ")) != "y":
+                continue
+            else:
+                break
+
         snaps = []
         for display in displays:
             print(_("Created snapshot for display:"), display.get("connector"))
@@ -577,40 +622,12 @@ def display_mode(config, excluded_monitors):
     pass
 
 def create_display_snapshot(display, config):
-    data = {}
-    data["edid_hex"]= display["edid_hex"]
 
-    decoded_bytes = subprocess.run(
-        ["edid-decode", '-s', '-n',  display["edid_path"] ],
-        capture_output=True,
-        text=False,
-        check=True,
-    ).stdout
-
-    decoded = decoded_bytes.decode("utf-8", errors="replace")
-
-    edid_dict = {}
-    current_section = None
-
-    for line in decoded.splitlines():
-        line = line.rstrip()
-        if not line:
-            continue
-
-        if not line.startswith(" "):
-            current_section = line.strip(":")
-            edid_dict[current_section] = {}
-            continue
-
-        if ":" in line:
-            key, value = line.split(":", 1)
-            key = key.strip()
-            value = value.strip()
-            edid_dict[current_section][key] = value
-        else:
-            edid_dict[current_section].setdefault("_misc", []).append(line.strip())
-
-    data['edid-decode'] = edid_dict
+    edid_decode = 'sudo edid-decode -s -n {}'.format(display["edid_path"])
+    data = {
+        'edid_hex': display["edid_hex"],
+        'edid_decode': exec_cmd(edid_decode),
+    }
 
     snapshot = SNAPSHOT_BASE.copy()
     snapshot['data'] = data
