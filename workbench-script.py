@@ -539,30 +539,39 @@ def get_displays():
     return displays
 
 def handle_interactive_mode(mode, config):
-    print(_("\n=== Configuration Mode ==="))
-    print(_(" Step 1: Disconnect all displays except the ones required to run Workbench."))
-    print(_("These remaining displays will be EXCLUDED from analysis."))
-    input(_("\nPress ENTER once you are ready..."))
+    print("\n" + "=" * 50)
+    print("            CONFIGURATION MODE")
+    print("=" * 50)
+    print("\nStep 1: Disconnect all displays except the ones required to run Workbench.")
+    print("        These remaining displays will be EXCLUDED from analysis.\n")
+    input(">> Press ENTER once you are ready... ")
 
     while True:
         excluded_monitors = {}
         try:
             monitors = get_displays()
-            print(_("\n Detected displays to exclude:"))
+            print("\nDetected displays to exclude:")
+            print("-" * 35)
             for m in monitors:
-                print("- {}".format(m["connector"]))
+                print(f" • Connector: {m['connector']}")
 
-            if input(_("\n Are u sure? y/n: ")) == "y":
+            if input("\nConfirm exclusion of these displays? [y/N]: ") == "y":
                 excluded_monitors = monitors
                 break
             else:
+                print("\n Exclusion cancelled. Retrying...\n")
                 continue
         except Exception as e:
-            print(_("Error while detecting displays: "), e)
+            print(_("Error while detecting displays: {} "), e)
 
-    #TODO Disks exclusion
-    print(_("\n Initial configuration done."))
-    print(_("# # # Excluded displays: "), [m.get("connector") for m in excluded_monitors])
+    print("\n" + "=" * 50)
+    print("Initial configuration completed.")
+    print("-" * 50)
+    print("Excluded displays:")
+    for m in excluded_monitors:
+        print(f" • • • {m.get('connector')}")
+    print("=" * 50 + "\n")
+    # TODO Disks exclusion
 
     if mode == "display":
         #TODO whie loop
@@ -572,49 +581,51 @@ def display_mode(config, excluded_monitors):
     try:
 
         while True:
-            excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+            m = get_displays() or []
+            #excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
             excluded_hex ={}
             displays = [
                 m for m in m if m.get("edid_hex") not in excluded_hex
             ]
             if not displays:
-                print(_("\nNo additional displays found for analysis. ENTER to rety"))
+                input("\n No additional displays found for analysis.\n>> Press ENTER to retry...")
                 return
 
-            print(_("\n Found displays:"),
-                    [m.get("connector") for m in displays])
+            print("\n" + "=" * 50)
+            print("Available displays for analysis:")
+            print("-" * 50)
+            for d in displays:
+                print(f" • {d.get('connector')}")
+            print("=" * 50)
 
-            if input(_("\n Do you want to create a snapshot of these display/s ? y/n: ")) != "y":
-                continue
-            else:
+            if input(_("\n Do you want to create a snapshot of these display(s)? [y/N]: ")) == "y":
                 break
+            else:
+                print("\nSkipping snapshot. Retrying...\n")
 
         snaps = []
         for display in displays:
-            print(_("Created snapshot for display:"), display.get("connector"))
             snapshot, snap_uuid = create_display_snapshot(display, config)
             snaps.append((snapshot, snap_uuid))
+            print(_("\nCreated snapshot for display:"), display.get("connector"))
 
         for snap, snap_uuid in snaps:
             save_snapshot_in_disk(snap, config['path'], snap_uuid)
 
+        print(_("\n Saved all display snapshots on disk. Trying for server..."))
+        for snap, snap_uuid in snaps:
             if config['url']:
-                print(_("Saved all display snapshots on disk. Trying for server..."))
-                breakpoint()
                 send_snapshot_to_devicehub(
                     snap,
                     config['token'],
                     config['url'],
-                    uuid,
+                    snap_uuid,
                     legacy=False,
-                    disable_qr=config['disable_qr']
+                    disable_qr=True
                 )
 
-                logger.info(_("END"))
-                return
-
-        else:
-            print(_("\nNo additional displays found for analysis."))
+        logger.info(_("END"))
+        print("\n All snapshots processed successfully.\n")
 
     except Exception as e:
         print(f"Error: {e}")
