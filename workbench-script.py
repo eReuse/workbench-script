@@ -630,8 +630,11 @@ def create_display_snapshot(display, config):
     }
 
     snapshot = SNAPSHOT_BASE.copy()
+    #snapshot copy would generate same uuid for two consecutive snapshots
+    snap_uuid = str(uuid.uuid4())
+
+    snapshot["uuid"] = snap_uuid
     snapshot['data'] = data
-    snap_uuid = snapshot["uuid"]
     url_wallet = config.get("url_wallet")
     wb_sign_token = config.get("wb_sign_token")
 
