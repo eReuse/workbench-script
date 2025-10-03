@@ -22,9 +22,9 @@ import time
 
 
 SNAPSHOT_BASE = {
-    'timestamp': str(datetime.now()),
+    'timestamp': "",
     'type': 'Snapshot',
-    'uuid': str(uuid.uuid4()),
+    'uuid': "",
     'software': "workbench-script",
     'version': "0.0.1",
     'operator_id': "",
@@ -263,27 +263,95 @@ def smartctl(all_disks, disk=None):
 
 # TODO permitir selección
 # TODO permitir que vaya más rápido
-def get_data(all_disks):
+def collect_device_data(all_disks):
     dmidecode = 'sudo dmidecode'
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
-
-    data = {
+    return {
         'smartctl': smartctl(all_disks),
         'dmidecode': exec_cmd(dmidecode),
-        'inxi': exec_cmd(inxi)
+        'inxi': exec_cmd(inxi),
+        'snapshot_type': "Device",
     }
 
-    return data
+
+def collect_display_data(display):
+    edid_decode = f'sudo edid-decode -s -n {display["edid_path"]}'
+    return {
+        'edid_hex': display["edid_hex"],
+        'edid_decode': exec_cmd(edid_decode),
+        'snapshot_type': "Display",
+    }
 
 
-def gen_snapshot(all_disks):
+def collect_disk_data():
+    #TODO
+    pass
+
+def gen_device_snapshot(config):
+    legacy = config.get("legacy", None)
+
+    all_disks = get_disks()
+    erase_data = None
+    if config['erase'] and config['device'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'], user_disk=config['device'])
+    elif config['erase'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'])
+
+    data = collect_device_data(all_disks)
+    if erase_data:
+        data['erase'] = erase_data
+
+    # legacy snapshots aren't sent to idhub
+    snap, uuid = create_snapshot(data, config, sign=not legacy)
+    if legacy:
+        convert_to_legacy_snapshot(snap)
+
+    return snap, uuid
+
+
+def gen_display_snapshot(display, config):
+    data = collect_display_data(display)
+    return create_snapshot(data, config, sign= False)
+
+
+def create_snapshot(data, config, sign=True):
     snapshot = SNAPSHOT_BASE.copy()
-    #get_data should be create_snapshot_data
-    snapshot['data'] = get_data(all_disks)
-    return snapshot
+    snap_uuid = str(uuid.uuid4())
+    snapshot.update({
+        "timestamp": str(datetime.now()),
+        "uuid": snap_uuid,
+        "data": data,
+    })
+
+    wb_sign_token = config.get("wb_sign_token")
+    if wb_sign_token:
+        tk = wb_sign_token.encode("utf8")
+        snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
+
+    if sign and wb_sign_token and config.get("url_wallet"):
+        return send_to_sign_credential(snapshot, wb_sign_token, config["url_wallet"]), snap_uuid
+
+    return snapshot, snap_uuid
 
 
-def save_snapshot_in_disk(snapshot, path, snap_uuid):
+def save_and_send_snapshot(snapshot_dict, snap_uuid, config):
+    snapshot_json = json.dumps(snapshot_dict)
+    legacy = config.get("legacy", None)
+    disable_qr = config.get("disable_qr", None)
+    save_snapshot_in_disk(snapshot_json, config['path'], snap_uuid)
+
+    if config.get('url'):
+        send_snapshot_to_devicehub(
+            snapshot_json,
+            config['token'],
+            config['url'],
+            snap_uuid,
+            legacy,
+            disable_qr
+        )
+
+
+def save_snapshot_in_disk(snapshot_json, path, snap_uuid):
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -296,7 +364,7 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             os.makedirs(snapshot_path)
             logger.info(_("Created snapshots directory at '%s'"), snapshot_path)
         with open(filename, "w") as f:
-            f.write(snapshot)
+            f.write(snapshot_json)
         logger.info(_("Snapshot written in path '%s'"), filename)
     except Exception as e:
         try:
@@ -306,7 +374,7 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
                 datetime.now().strftime("%Y%m%d-%H_%M_%S"),
                 snap_uuid)
             with open(fallback_filename, "w") as f:
-                f.write(snapshot)
+                f.write(snapshot_json)
                 logger.warning(_("Snapshot written in fallback path '%s'"), fallback_filename)
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
@@ -347,14 +415,14 @@ def send_to_sign_credential(snapshot, token, url):
             res = json.loads(response_text)
             if res.get("status") == "success" and res.get("data"):
                 return res["data"]
-            return json.dumps(snapshot)
+            return snapshot
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
-            return json.dumps(snapshot)
+            return snapshot
 
     except Exception as e:
         logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
-        return json.dumps(snapshot)
+        return snapshot
 
 # apt install qrencode
 def generate_qr_code(url, disable_qr):
@@ -366,7 +434,7 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, max_retries=5):
+def send_snapshot_to_devicehub(snapshot_json, token, url, ev_uuid, legacy, disable_qr, max_retries=5):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -380,7 +448,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
     retries = 0
     while retries < max_retries:
         try:
-            data = snapshot.encode('utf-8')
+            data = snapshot_json.encode('utf-8')
             request = urllib.request.Request(url, data=data, headers=headers)
             with urllib.request.urlopen(request) as response:
                 status_code = response.getcode()
@@ -577,19 +645,20 @@ def handle_interactive_mode(mode, config):
         #TODO whie loop
         display_mode(config, excluded_monitors)
 
+
 def display_mode(config, excluded_monitors):
     try:
-
         while True:
             m = get_displays() or []
-            #excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
-            excluded_hex ={}
+            excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+            #For local test on one display use empty dict
+            #excluded_hex ={}
             displays = [
                 m for m in m if m.get("edid_hex") not in excluded_hex
             ]
             if not displays:
-                input("\n No additional displays found for analysis.\n>> Press ENTER to retry...")
-                return
+                input("\n No additional displays found for analysis.\n>> Press ENTER to retry or 'Ctrl + D' to exit...")
+                continue
 
             print("\n" + "=" * 50)
             print("Available displays for analysis:")
@@ -602,63 +671,16 @@ def display_mode(config, excluded_monitors):
                 break
             else:
                 print("\nSkipping snapshot. Retrying...\n")
+                continue
 
-        snaps = []
         for display in displays:
-            snapshot, snap_uuid = create_display_snapshot(display, config)
-            snaps.append((snapshot, snap_uuid))
-            print(_("\nCreated snapshot for display:"), display.get("connector"))
+            snapshot_dict, snap_uuid = gen_display_snapshot(display, config)
+            save_and_send_snapshot(snapshot_dict, snap_uuid, config)
 
-        for snap, snap_uuid in snaps:
-            save_snapshot_in_disk(snap, config['path'], snap_uuid)
-
-        print(_("\n Saved all display snapshots on disk. Trying for server..."))
-        for snap, snap_uuid in snaps:
-            if config['url']:
-                send_snapshot_to_devicehub(
-                    snap,
-                    config['token'],
-                    config['url'],
-                    snap_uuid,
-                    legacy=False,
-                    disable_qr=True
-                )
-
-        logger.info(_("END"))
         print("\n All snapshots processed successfully.\n")
 
     except Exception as e:
         print(f"Error: {e}")
-
-    pass
-
-def create_display_snapshot(display, config):
-
-    edid_decode = 'sudo edid-decode -s -n {}'.format(display["edid_path"])
-    data = {
-        'edid_hex': display["edid_hex"],
-        'edid_decode': exec_cmd(edid_decode),
-    }
-
-    snapshot = SNAPSHOT_BASE.copy()
-    #snapshot copy would generate same uuid for two consecutive snapshots
-    snap_uuid = str(uuid.uuid4())
-
-    snapshot["uuid"] = snap_uuid
-    snapshot['data'] = data
-    url_wallet = config.get("url_wallet")
-    wb_sign_token = config.get("wb_sign_token")
-
-    if wb_sign_token:
-        tk = wb_sign_token.encode("utf8")
-        snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
-
-    if url_wallet and wb_sign_token:
-        snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
-    else:
-        snapshot = json.dumps(snapshot)
-
-    return snapshot, snap_uuid
 
 
 def main():
@@ -674,7 +696,6 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
-    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
@@ -682,46 +703,15 @@ def main():
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
     # --- Interactive Mode ---
-    if config.get("display_server") or config.get("display_disk") :
+    if config.get("display_server") or config.get("disk_server") :
+        #SUPPORT FOR DISPLAY MODE ONLY FOR NOW
+        config["legacy"] = None
         handle_interactive_mode("display",config)
-        exit(0)
+        return
 
-    all_disks = get_disks()
-    snapshot = gen_snapshot(all_disks)
-    snap_uuid = snapshot["uuid"]
-
-    if config['erase'] and config['device'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'])
-
-    if legacy:
-        convert_to_legacy_snapshot(snapshot)
-        snapshot = json.dumps(snapshot)
-    else:
-        url_wallet = config.get("url_wallet")
-        wb_sign_token = config.get("wb_sign_token")
-
-        if wb_sign_token:
-            tk = wb_sign_token.encode("utf8")
-            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
-
-        if url_wallet and wb_sign_token:
-            snapshot = send_to_sign_credential(snapshot, wb_sign_token, url_wallet)
-        else:
-            snapshot = json.dumps(snapshot)
-
-    save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
-
-    if config['url']:
-        send_snapshot_to_devicehub(
-            snapshot,
-            config['token'],
-            config['url'],
-            snap_uuid,
-            legacy,
-            config['disable_qr']
-        )
+    # --- Normal Mode ---
+    snapshot_dict, snap_uuid = gen_device_snapshot(config)
+    save_and_send_snapshot(snapshot_dict, snap_uuid, config)
 
     logger.info(_("END"))
 
