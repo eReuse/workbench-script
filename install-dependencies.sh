@@ -48,6 +48,7 @@ main() {
                      inxi
                      python3
                      pipenv
+                     edid-decode
                      qrencode'
 
         # install all
