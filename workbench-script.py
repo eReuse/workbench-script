@@ -617,43 +617,128 @@ def get_displays():
     return displays
 
 def handle_interactive_mode(mode, config):
-    print("\n" + "=" * 50)
-    print("            CONFIGURATION MODE")
-    print("=" * 50)
+    print("\n" + "=" * 50 + " \n CONFIGURATION MODE \n " + "=" * 50)
     print("\nStep 1: Disconnect all displays except the ones required to run Workbench.")
     print("        These remaining displays will be EXCLUDED from analysis.\n")
     input(">> Press ENTER once you are ready... ")
 
     while True:
         excluded_monitors = {}
+        excluded_disks = {}
         try:
-            monitors = get_displays()
-            print("\nDetected displays to exclude:")
-            print("-" * 35)
-            for m in monitors:
-                print(f" • Connector: {m['connector']}")
+            monitors = get_displays() or []
+            disks = [ d for d in get_disks() if d.get("type") == "disk"]
 
-            if input("\nConfirm exclusion of these displays? [y/N]: ") == "y":
+            print("\nDetected displays/disks to exclude:")
+            print("-" * 50)
+            if monitors:
+                print("Displays:")
+                for m in monitors:
+                    print(f"  • {m.get('connector')}")
+            else:
+                print("  (No displays detected)")
+
+            if disks:
+                print("Disks:")
+                for d in disks:
+                    print(f"  • {d.get('name')}")
+            else:
+                print("  (No disks detected)")
+            print("-" * 50)
+
+
+            if input("\nConfirm exclusion of these displays/disks? [y/N]: ") == "y":
                 excluded_monitors = monitors
+                excluded_disks = [d.get("name") for d in disks]
                 break
             else:
                 print("\n Exclusion cancelled. Retrying...\n")
                 continue
         except Exception as e:
-            print(_("Error while detecting displays: {} "), e)
+            print(_("Error while detecting devices: {} "), e)
 
     print("\n" + "=" * 50)
     print("Initial configuration completed.")
     print("-" * 50)
-    print("Excluded displays:")
-    for m in excluded_monitors:
-        print(f" • • • {m.get('connector')}")
-    print("=" * 50 + "\n")
-    # TODO Disks exclusion
 
-    if mode == "display":
-        #TODO whie loop
+
+    if excluded_monitors:
+        print("\nExcluded Displays:")
+        for m in excluded_monitors:
+            print(f"  • {m.get('connector')}")
+    else:
+        print("\nNo displays excluded.")
+
+    if excluded_disks:
+        print("\nExcluded Disks:")
+        for d in excluded_disks:
+            print(f"  • {d}")
+    else:
+        print("\nNo disks excluded.")
+    print("=" * 50 + "\n")
+
+    print(_("\n Step 2: Connect the disks/displays you want to analyze."))
+    input(_("\n Press ENTER once they are connected..."))
+
+
+    if config.get("display_server", None):
         display_mode(config, excluded_monitors)
+    else:
+        disk_mode(config, excluded_disks)
+
+
+def disk_mode(config, excluded_disks):
+    try:
+        while True:
+            all_disks = get_disks() or []
+            excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
+            excluded_names =[]
+
+            candidates = []
+            for d in all_disks:
+                try:
+                    if d.get("type") != "disk":
+                        continue
+                    if 'boot' in d.get('mountpoints', []):
+                        continue
+                    if d.get("name") in excluded_names:
+                        continue
+                    candidates.append(d)
+                except Exception:
+                    continue
+
+            if not candidates:
+                input("\n No additional disks found for analysis.\n>> Press ENTER to retry or 'Ctrl + D' to exit...")
+                continue
+
+            print("\n" + "=" * 50)
+            print("Available disks for analysis:")
+            print("-" * 50)
+            for d in candidates:
+                name = d.get("name")
+                tran = d.get("tran")
+                rota = d.get("rota")
+                print(f" • {name} (tran={tran} rota={rota})")
+            print("=" * 50)
+
+            if input(_("\n Do you want to create a snapshot of these disk(s)? [y/N]: ")) != "y":
+                print("\nSkipping snapshot. Retrying...\n")
+                continue
+
+            snaps = []
+            for disk in candidates:
+                print(f"\nCreating snapshot for disk: {disk.get('name')}")
+                snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
+                snaps.append((snapshot_dict, snap_uuid))
+
+            for snapshot_dict, snap_uuid in snaps:
+                save_and_send_snapshot(snapshot_dict, snap_uuid, config)
+
+            print("\n All disk snapshots processed successfully.\n")
+            return
+
+    except Exception as e:
+        print(f"Error: {e}")
 
 
 def display_mode(config, excluded_monitors):
