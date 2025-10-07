@@ -283,9 +283,16 @@ def collect_display_data(display):
     }
 
 
-def collect_disk_data():
-    #TODO
-    pass
+def collect_disk_data(disk):
+    _smartctl_output = exec_cmd(f"sudo smartctl -i -j /dev/{disk.get('name')}"),
+    _lsblk_output = exec_cmd(f"lsblk -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA,MOUNTPOINTS -J /dev/{disk.get('name')}")
+
+    return {
+        "snapshot_type": "Disk",
+        "smartctl": _smartctl_output,
+        "lsblk": _lsblk_output,
+    }
+
 
 def gen_device_snapshot(config):
     legacy = config.get("legacy", None)
@@ -313,6 +320,9 @@ def gen_display_snapshot(display, config):
     data = collect_display_data(display)
     return create_snapshot(data, config, sign= False)
 
+def gen_disk_snapshot(disk, config):
+    data = collect_disk_data(disk)
+    return create_snapshot(data, config, sign=False)
 
 def create_snapshot(data, config, sign=True):
     snapshot = SNAPSHOT_BASE.copy()
