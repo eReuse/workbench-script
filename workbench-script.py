@@ -284,13 +284,13 @@ def collect_display_data(display):
 
 
 def collect_disk_data(disk):
-    _smartctl_output = exec_cmd(f"sudo smartctl -i -j /dev/{disk.get('name')}"),
-    _lsblk_output = exec_cmd(f"lsblk -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA,MOUNTPOINTS -J /dev/{disk.get('name')}")
+    _smart_output = exec_cmd(f"sudo smartctl -a -j /dev/{disk.get('name')}")
+    _lsblk_output = exec_cmd(f"lsblk -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA,MOUNTPOINTS -J /dev/{disk.get('name')}" )
 
     return {
         "snapshot_type": "Disk",
-        "smartctl": _smartctl_output,
-        "lsblk": _lsblk_output,
+        "smartctl":json.loads(_smart_output),
+        "lsblk": json.loads(_lsblk_output),
     }
 
 
@@ -344,11 +344,9 @@ def create_snapshot(data, config, sign=True):
     return snapshot, snap_uuid
 
 
-def save_and_send_snapshot(snapshot_dict, snap_uuid, config):
-    snapshot_json = json.dumps(snapshot_dict)
+def send_snapshot(snapshot_json, snap_uuid, config):
     legacy = config.get("legacy", None)
     disable_qr = config.get("disable_qr", None)
-    save_snapshot_in_disk(snapshot_json, config['path'], snap_uuid)
 
     if config.get('url'):
         send_snapshot_to_devicehub(
@@ -361,7 +359,8 @@ def save_and_send_snapshot(snapshot_dict, snap_uuid, config):
         )
 
 
-def save_snapshot_in_disk(snapshot_json, path, snap_uuid):
+def save_snapshot_in_disk(snapshot_dict, path, snap_uuid):
+    snapshot_json = json.dumps(snapshot_dict)
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -376,6 +375,7 @@ def save_snapshot_in_disk(snapshot_json, path, snap_uuid):
         with open(filename, "w") as f:
             f.write(snapshot_json)
         logger.info(_("Snapshot written in path '%s'"), filename)
+        return snapshot_json
     except Exception as e:
         try:
             logger.warning(_("Attempting to save file in actual path. Reason: Failed to write in snapshots directory:\n    %s."), e)
@@ -386,9 +386,11 @@ def save_snapshot_in_disk(snapshot_json, path, snap_uuid):
             with open(fallback_filename, "w") as f:
                 f.write(snapshot_json)
                 logger.warning(_("Snapshot written in fallback path '%s'"), fallback_filename)
+                return snapshot_json
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
+        return None
 
 def send_to_sign_credential(snapshot, token, url):
     headers = {
@@ -616,7 +618,7 @@ def get_displays():
 
     return displays
 
-def handle_interactive_mode(mode, config):
+def handle_interactive_mode(config):
     print("\n" + "=" * 50 + " \n CONFIGURATION MODE \n " + "=" * 50)
     print("\nStep 1: Disconnect all displays except the ones required to run Workbench.")
     print("        These remaining displays will be EXCLUDED from analysis.\n")
@@ -680,11 +682,11 @@ def handle_interactive_mode(mode, config):
     print(_("\n Step 2: Connect the disks/displays you want to analyze."))
     input(_("\n Press ENTER once they are connected..."))
 
-
-    if config.get("display_server", None):
-        display_mode(config, excluded_monitors)
-    else:
-        disk_mode(config, excluded_disks)
+    while True:
+        if config.get("display_server", None):
+            display_mode(config, excluded_monitors)
+        else:
+            disk_mode(config, excluded_disks)
 
 
 def disk_mode(config, excluded_disks):
@@ -730,9 +732,10 @@ def disk_mode(config, excluded_disks):
                 print(f"\nCreating snapshot for disk: {disk.get('name')}")
                 snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
                 snaps.append((snapshot_dict, snap_uuid))
+                snapshot_json = save_snapshot_in_disk(snapshot_dict, config['path'], snap_uuid)
 
             for snapshot_dict, snap_uuid in snaps:
-                save_and_send_snapshot(snapshot_dict, snap_uuid, config)
+                send_snapshot(snapshot_json, snap_uuid, config)
 
             print("\n All disk snapshots processed successfully.\n")
             return
@@ -799,14 +802,14 @@ def main():
 
     # --- Interactive Mode ---
     if config.get("display_server") or config.get("disk_server") :
-        #SUPPORT FOR DISPLAY MODE ONLY FOR NOW
         config["legacy"] = None
-        handle_interactive_mode("display",config)
+        handle_interactive_mode(config)
         return
 
     # --- Normal Mode ---
     snapshot_dict, snap_uuid = gen_device_snapshot(config)
-    save_and_send_snapshot(snapshot_dict, snap_uuid, config)
+    snap_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+    send_snapshot(snapshot_json, snap_uuid, config)
 
     logger.info(_("END"))
 
