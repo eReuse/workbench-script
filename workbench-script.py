@@ -263,26 +263,105 @@ def smartctl(all_disks, disk=None):
 
 # TODO permitir selección
 # TODO permitir que vaya más rápido
-def get_data(all_disks):
+def collect_device_data(all_disks):
     dmidecode = 'sudo dmidecode'
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
-
-    data = {
+    return {
         'smartctl': smartctl(all_disks),
         'dmidecode': exec_cmd(dmidecode),
-        'inxi': exec_cmd(inxi)
+        'inxi': exec_cmd(inxi),
+        'snapshot_type': "Device",
     }
 
-    return data
+
+def collect_display_data(display):
+    edid_decode = f'sudo edid-decode -s -n {display["edid_path"]}'
+    return {
+        'edid_hex': display["edid_hex"],
+        'edid_decode': exec_cmd(edid_decode),
+        'snapshot_type': "Display",
+    }
 
 
-def gen_snapshot(all_disks):
+def collect_disk_data(disk):
+    _smart_output = exec_cmd(f"sudo smartctl -a -j /dev/{disk.get('name')}")
+    _lsblk_output = exec_cmd(f"lsblk -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA,MOUNTPOINTS -J /dev/{disk.get('name')}" )
+
+    return {
+        "snapshot_type": "Disk",
+        "smartctl":json.loads(_smart_output),
+        "lsblk": json.loads(_lsblk_output),
+    }
+
+
+def gen_device_snapshot(config):
+    legacy = config.get("legacy", None)
+
+    all_disks = get_disks()
+    erase_data = None
+    if config['erase'] and config['device'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'], user_disk=config['device'])
+    elif config['erase'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'])
+
+    data = collect_device_data(all_disks)
+    if erase_data:
+        data['erase'] = erase_data
+
+    # legacy snapshots aren't sent to idhub
+    snap, uuid = create_snapshot(data, config, sign=not legacy)
+    if legacy:
+        convert_to_legacy_snapshot(snap)
+
+    return snap, uuid
+
+
+def gen_display_snapshot(display, config):
+    data = collect_display_data(display)
+    return create_snapshot(data, config, sign= False)
+
+def gen_disk_snapshot(disk, config):
+    data = collect_disk_data(disk)
+    return create_snapshot(data, config, sign=False)
+
+def create_snapshot(data, config, sign=True):
     snapshot = SNAPSHOT_BASE.copy()
-    snapshot['data'] = get_data(all_disks)
-    return snapshot
+    snap_uuid = str(uuid.uuid4())
+    snapshot.update({
+        "timestamp": str(datetime.now()),
+        "uuid": snap_uuid,
+        "data": data,
+    })
+
+    wb_sign_token = config.get("wb_sign_token")
+    if wb_sign_token:
+        tk = wb_sign_token.encode("utf8")
+        snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
+
+    if sign and wb_sign_token and config.get("url_wallet"):
+        return send_to_sign_credential(snapshot, wb_sign_token, config["url_wallet"]), snap_uuid
+
+    return snapshot, snap_uuid
 
 
-def save_snapshot_in_disk(snapshot, path, snap_uuid):
+def send_snapshot(snapshot_json, snap_uuid, config):
+    legacy = config.get("legacy", None)
+    disable_qr = config.get("disable_qr", None)
+
+    if config.get('url'):
+        send_snapshot_to_devicehub(
+            snapshot_json,
+            config['token'],
+            config['url'],
+            snap_uuid,
+            legacy,
+            disable_qr
+        )
+
+
+def save_snapshot_in_disk(snapshot_dict, snap_uuid, config):
+    snapshot_json = json.dumps(snapshot_dict)
+    path = config['url']
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -295,8 +374,9 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             os.makedirs(snapshot_path)
             logger.info(_("Created snapshots directory at '%s'"), snapshot_path)
         with open(filename, "w") as f:
-            f.write(snapshot)
+            f.write(snapshot_json)
         logger.info(_("Snapshot written in path '%s'"), filename)
+        return snapshot_json
     except Exception as e:
         try:
             logger.warning(_("Attempting to save file in actual path. Reason: Failed to write in snapshots directory:\n    %s."), e)
@@ -305,8 +385,9 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
                 datetime.now().strftime("%Y%m%d-%H_%M_%S"),
                 snap_uuid)
             with open(fallback_filename, "w") as f:
-                f.write(snapshot)
+                f.write(snapshot_json)
                 logger.warning(_("Snapshot written in fallback path '%s'"), fallback_filename)
+                return snapshot_json
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
@@ -323,7 +404,7 @@ def http_post(url, data, headers):
         logger.error("HTTPError %s: %s", status_code, response_text)
     return status_code, response_text
 
-def send_snapshot_to_idhub(snapshot, token, url):
+def send_to_sign_credential(snapshot, token, url):
     """Send snapshot to be signed as a credential"""
     headers = {
         "Authorization": f"Bearer {token}",
@@ -334,7 +415,13 @@ def send_snapshot_to_idhub(snapshot, token, url):
         cred = {
             "type": "DeviceSnapshotV1",
             "save": False,
-            "data": snapshot
+            "data": {
+                "operator_id": snapshot["operator_id"],
+                "dmidecode": snapshot["data"]["dmidecode"],
+                "inxi": snapshot["data"]["inxi"],
+                "smartctl": snapshot["data"]["smartctl"],
+                "uuid": snapshot["uuid"],
+            }
         }
 
         data = json.dumps(cred).encode('utf-8')
@@ -350,14 +437,14 @@ def send_snapshot_to_idhub(snapshot, token, url):
             res = json.loads(response_text)
             if res.get("status") == "success" and res.get("data"):
                 return res["data"]
-            return json.dumps(snapshot)
+            return snapshot
         else:
             logger.error(_("Credential cannot signed in '%s'"), url)
-            return json.dumps(snapshot)
+            return snapshot
 
     except Exception as e:
-        logger.error(_("Credential not remotely signed by IdHub URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
-        return json.dumps(snapshot)
+        logger.error(_("Credential not remotely builded to URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
+        return snapshot
 
 # apt install qrencode
 def generate_qr_code(url, disable_qr):
@@ -369,8 +456,7 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
-    """Send snapshot to be stored in devicehub inventory service"""
+def send_snapshot_to_devicehub(snapshot_json, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -381,12 +467,11 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
         "Content-Type": "application/json"
     }
 
-    retries = 1
+    retries = 0
     while retries < http_max_retries:
         try:
-            data = snapshot.encode('utf-8')
+            data = snapshot_json.encode('utf-8')
             status_code, response_text = http_post(url, data, headers)
-
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
                 if legacy:
@@ -450,7 +535,6 @@ def load_config(config_file="settings.ini"):
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr = (None,)*8
         url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr, display_server, disk_server = (None,)*10
 
     return {
@@ -620,7 +704,7 @@ def disk_mode(config, excluded_disks):
         while True:
             all_disks = get_disks() or []
             excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
-            # excluded_names =[]
+            excluded_names =[]
 
             candidates = []
             for d in all_disks:
@@ -690,7 +774,7 @@ def display_mode(config, excluded_monitors):
             m = get_displays() or []
             excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
             #For local test on one display use empty dict
-            # excluded_hex ={}
+            excluded_hex ={}
             displays = [
                 m for m in m if m.get("edid_hex") not in excluded_hex
             ]
@@ -741,51 +825,25 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
-    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
     if os.geteuid() != 0:
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
-    all_disks = get_disks()
-    snapshot = gen_snapshot(all_disks)
-    snap_uuid = snapshot["uuid"]
+    # --- Interactive Mode ---
+    if config.get("display_server") or config.get("disk_server") :
+        config["legacy"] = None
+        handle_interactive_mode(config)
+        return
 
-    if config['erase'] and config['device'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'])
+    # --- Normal Mode ---
+    snapshot_dict, snap_uuid = gen_device_snapshot(config)
+    snap_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+    if not snap_json:
+        logger.info(_("Error creating device Snapshot. Aborting"))
 
-    if legacy:
-        convert_to_legacy_snapshot(snapshot)
-        snapshot = json.dumps(snapshot)
-    else:
-        url_wallet = config.get("url_wallet")
-        wb_sign_token = config.get("wb_sign_token")
-
-        if wb_sign_token:
-            tk = wb_sign_token.encode("utf8")
-            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
-
-        if url_wallet and wb_sign_token:
-            snapshot = send_snapshot_to_idhub(snapshot, wb_sign_token, url_wallet)
-        else:
-            snapshot = json.dumps(snapshot)
-
-    save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
-
-    if config['url']:
-        send_snapshot_to_devicehub(
-            snapshot,
-            config['token'],
-            config['url'],
-            snap_uuid,
-            legacy,
-            config['disable_qr'],
-            config['http_max_retries'],
-            config['http_retry_delay']
-        )
+    send_snapshot(snap_json, snap_uuid, config)
 
     logger.info(_("END"))
 
