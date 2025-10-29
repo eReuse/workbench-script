@@ -12,7 +12,7 @@ main() {
         sudo apt update
 
         # system dependencies
-        host_deps='sudo make'
+        host_deps='sudo'
         # thanks https://stackoverflow.com/questions/23513045/how-to-check-if-a-process-is-running-inside-docker-container
         if [ ! "${DOCKER_BUILD}" ]; then
                 host_deps="${host_deps} qemu-system"
@@ -48,6 +48,7 @@ main() {
                      inxi
                      python3
                      pipenv
+                     edid-decode
                      qrencode'
 
         # install all
