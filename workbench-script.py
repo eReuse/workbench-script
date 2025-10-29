@@ -359,8 +359,9 @@ def send_snapshot(snapshot_json, snap_uuid, config):
         )
 
 
-def save_snapshot_in_disk(snapshot_dict, path, snap_uuid):
+def save_snapshot_in_disk(snapshot_dict, snap_uuid, config):
     snapshot_json = json.dumps(snapshot_dict)
+    path = config['url']
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -694,7 +695,7 @@ def disk_mode(config, excluded_disks):
         while True:
             all_disks = get_disks() or []
             excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
-            excluded_names =[]
+            # excluded_names =[]
 
             candidates = []
             for d in all_disks:
@@ -728,13 +729,27 @@ def disk_mode(config, excluded_disks):
                 continue
 
             snaps = []
+            failed_disks = 0
             for disk in candidates:
-                print(f"\nCreating snapshot for disk: {disk.get('name')}")
-                snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
-                snaps.append((snapshot_dict, snap_uuid))
-                snapshot_json = save_snapshot_in_disk(snapshot_dict, config['path'], snap_uuid)
+                disk_name = disk.get("name")
+                print(f"\nCreating snapshot for disk: {disk_name}")
 
-            for snapshot_dict, snap_uuid in snaps:
+                if not os.path.exists(f"/dev/{disk_name}"):
+                    logger.warning(_("Disk %s is no longer connected. Skipping."), disk_name)
+                    failed_disks += 1
+                    continue
+                snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
+                if not snapshot_dict or not snap_uuid:
+                    logger.error(_("Failed to generate snapshot data for %s."), disk_name)
+                    failed_disks += 1
+                    continue
+
+                snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+                snaps.append((snapshot_json, snap_uuid))
+
+            print(f"  {failed_disks} disks failed or were skipped.")
+
+            for snapshot_json, snap_uuid in snaps:
                 send_snapshot(snapshot_json, snap_uuid, config)
 
             print("\n All disk snapshots processed successfully.\n")
@@ -750,7 +765,7 @@ def display_mode(config, excluded_monitors):
             m = get_displays() or []
             excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
             #For local test on one display use empty dict
-            #excluded_hex ={}
+            # excluded_hex ={}
             displays = [
                 m for m in m if m.get("edid_hex") not in excluded_hex
             ]
@@ -771,9 +786,16 @@ def display_mode(config, excluded_monitors):
                 print("\nSkipping snapshot. Retrying...\n")
                 continue
 
+        snaps = []
         for display in displays:
+            print(f"\nCreating snapshot for disk: {display.get('connector')}")
             snapshot_dict, snap_uuid = gen_display_snapshot(display, config)
-            save_and_send_snapshot(snapshot_dict, snap_uuid, config)
+            snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+            snaps.append((snapshot_json, snap_uuid))
+
+        for snapshot_json, snap_uuid in snaps:
+            send_snapshot(snapshot_json, snap_uuid, config)
+
 
         print("\n All snapshots processed successfully.\n")
 
@@ -809,7 +831,10 @@ def main():
     # --- Normal Mode ---
     snapshot_dict, snap_uuid = gen_device_snapshot(config)
     snap_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
-    send_snapshot(snapshot_json, snap_uuid, config)
+    if not snap_json:
+        logger.info(_("Error creating device Snapshot. Aborting"))
+
+    send_snapshot(snap_json, snap_uuid, config)
 
     logger.info(_("END"))
 
