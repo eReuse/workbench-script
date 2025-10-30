@@ -361,7 +361,7 @@ def send_snapshot(snapshot_json, snap_uuid, config):
 
 def save_snapshot_in_disk(snapshot_dict, snap_uuid, config):
     snapshot_json = json.dumps(snapshot_dict)
-    path = config['url']
+    path = config['path']
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -704,7 +704,7 @@ def disk_mode(config, excluded_disks):
         while True:
             all_disks = get_disks() or []
             excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
-            excluded_names =[]
+            #excluded_names =[]
 
             candidates = []
             for d in all_disks:
@@ -774,7 +774,7 @@ def display_mode(config, excluded_monitors):
             m = get_displays() or []
             excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
             #For local test on one display use empty dict
-            excluded_hex ={}
+            #excluded_hex ={}
             displays = [
                 m for m in m if m.get("edid_hex") not in excluded_hex
             ]
