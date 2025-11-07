@@ -653,7 +653,11 @@ def handle_interactive_mode(config):
             if disks:
                 print("Disks:")
                 for d in disks:
-                    print(f"  • {d.get('name')}")
+                    name = d.get("name")
+                    model = d.get("model", "")
+                    disk_type = "HDD" if d.get("rota") else "SSD"
+                    size = d.get("size", "")
+                    print(f" {name}: {model} ({disk_type}) - {size}")
             else:
                 print("  (No disks detected)")
             print("-" * 50)
@@ -690,79 +694,86 @@ def handle_interactive_mode(config):
     print("=" * 50 + "\n")
 
     print(_("\n Step 2: Connect the disks/displays you want to analyze."))
-    input(_("\n Press ENTER once they are connected..."))
 
     while True:
-        if config.get("display_server", None):
-            display_mode(config, excluded_monitors)
-        else:
-            disk_mode(config, excluded_disks)
+        try:
+            if config.get("display_server", None):
+                display_mode(config, excluded_monitors)
+                input(_("\n>> Press ENTER to scan for new displays or 'Ctrl + C' to exit..."))
+            else:
+                input(_("\n>> Press ENTER to scan for new disks or 'Ctrl + C' to exit..."))
+                disk_mode(config, excluded_disks)
+        except (KeyboardInterrupt, EOFError):
+            print(_("\nExiting interactive mode..."))
+            break
 
 
 def disk_mode(config, excluded_disks):
     try:
-        while True:
-            all_disks = get_disks() or []
-            excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
-            #excluded_names =[]
+        all_disks = get_disks() or []
+        excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
+        excluded_names =[]
 
-            candidates = []
-            for d in all_disks:
-                try:
-                    if d.get("type") != "disk":
-                        continue
-                    if 'boot' in d.get('mountpoints', []):
-                        continue
-                    if d.get("name") in excluded_names:
-                        continue
-                    candidates.append(d)
-                except Exception:
+        candidates = []
+        for d in all_disks:
+            try:
+                if d.get("type") != "disk":
                     continue
-
-            if not candidates:
-                input("\n No additional disks found for analysis.\n>> Press ENTER to retry or 'Ctrl + D' to exit...")
+                if 'boot' in d.get('mountpoints', []):
+                    continue
+                if d.get("name") in excluded_names:
+                    continue
+                candidates.append(d)
+            except Exception:
                 continue
 
-            print("\n" + "=" * 50)
-            print("Available disks for analysis:")
-            print("-" * 50)
-            for d in candidates:
-                name = d.get("name")
-                tran = d.get("tran")
-                rota = d.get("rota")
-                print(f" • {name} (tran={tran} rota={rota})")
-            print("=" * 50)
-
-            if input(_("\n Do you want to create a snapshot of these disk(s)? [y/N]: ")) != "y":
-                print("\nSkipping snapshot. Retrying...\n")
-                continue
-
-            snaps = []
-            failed_disks = 0
-            for disk in candidates:
-                disk_name = disk.get("name")
-                print(f"\nCreating snapshot for disk: {disk_name}")
-
-                if not os.path.exists(f"/dev/{disk_name}"):
-                    logger.warning(_("Disk %s is no longer connected. Skipping."), disk_name)
-                    failed_disks += 1
-                    continue
-                snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
-                if not snapshot_dict or not snap_uuid:
-                    logger.error(_("Failed to generate snapshot data for %s."), disk_name)
-                    failed_disks += 1
-                    continue
-
-                snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
-                snaps.append((snapshot_json, snap_uuid))
-
-            print(f"  {failed_disks} disks failed or were skipped.")
-
-            for snapshot_json, snap_uuid in snaps:
-                send_snapshot(snapshot_json, snap_uuid, config)
-
-            print("\n All disk snapshots processed successfully.\n")
+        if not candidates:
+            input("\n No additional disks found for analysis.\n>> Press ENTER to retry or 'Ctrl + C' to exit...")
             return
+
+        print("\n" + "=" * 50)
+        print("Available disks for analysis:")
+        print("-" * 50)
+        for d in candidates:
+
+            name = d.get("name")
+            model = d.get("model", "N/A")
+            rota = d.get("rota")
+            disk_type = "HDD" if rota else "SSD"
+            size = d.get("size", "")
+            print(f" {name}: {model} ({disk_type}) - {size}")
+        print("=" * 50)
+
+        if input(_("\n Do you want to create a snapshot of these disk(s)? [y/N]: ")) != "y":
+            print("\nSkipping snapshot. Retrying...\n")
+            return
+
+        snaps = []
+        failed_disks = 0
+        for disk in candidates:
+            disk_name = disk.get("name")
+            print(f"\nCreating snapshot for disk: {disk_name}")
+
+            if not os.path.exists(f"/dev/{disk_name}"):
+                logger.warning(_("Disk %s is no longer connected. Skipping."), disk_name)
+                failed_disks += 1
+                continue
+            snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
+            if not snapshot_dict or not snap_uuid:
+                logger.error(_("Failed to generate snapshot data for %s."), disk_name)
+                failed_disks += 1
+                continue
+
+            snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+            snaps.append((snapshot_json, snap_uuid))
+
+        print(f"  {failed_disks} disks failed or were skipped.")
+
+        for snapshot_json, snap_uuid in snaps:
+            send_snapshot(snapshot_json, snap_uuid, config)
+
+        print("\n All disk snapshots processed successfully.\n")
+        return
 
     except Exception as e:
         print(f"Error: {e}")
@@ -770,30 +781,29 @@ def disk_mode(config, excluded_disks):
 
 def display_mode(config, excluded_monitors):
     try:
-        while True:
-            m = get_displays() or []
-            excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
-            #For local test on one display use empty dict
-            #excluded_hex ={}
-            displays = [
-                m for m in m if m.get("edid_hex") not in excluded_hex
-            ]
-            if not displays:
-                input("\n No additional displays found for analysis.\n>> Press ENTER to retry or 'Ctrl + D' to exit...")
-                continue
+        m = get_displays() or []
+        excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+        #For local test on one display use empty dict
+        excluded_hex ={}
+        displays = [
+            m for m in m if m.get("edid_hex") not in excluded_hex
+        ]
+        if not displays:
+            input("\n No additional displays found for analysis.\n>> Press ENTER to retry or 'Ctrl + C' to exit...")
+            return
 
-            print("\n" + "=" * 50)
-            print("Available displays for analysis:")
-            print("-" * 50)
-            for d in displays:
-                print(f" • {d.get('connector')}")
-            print("=" * 50)
+        print("\n" + "=" * 50)
+        print("Available displays for analysis:")
+        print("-" * 50)
+        for d in displays:
+            print(f" • {d.get('connector')}")
+        print("=" * 50)
 
-            if input(_("\n Do you want to create a snapshot of these display(s)? [y/N]: ")) == "y":
-                break
-            else:
-                print("\nSkipping snapshot. Retrying...\n")
-                continue
+        if input(_("\n Do you want to create a snapshot of these display(s)? [y/N]: ")) == "y":
+            pass
+        else:
+            print("\nSkipping snapshot. Retrying...\n")
+            return
 
         snaps = []
         for display in displays:
@@ -807,6 +817,7 @@ def display_mode(config, excluded_monitors):
 
 
         print("\n All snapshots processed successfully.\n")
+        return
 
     except Exception as e:
         print(f"Error: {e}")
@@ -835,6 +846,7 @@ def main():
     if config.get("display_server") or config.get("disk_server") :
         config["legacy"] = None
         handle_interactive_mode(config)
+        logger.info(_("END"))
         return
 
     # --- Normal Mode ---
