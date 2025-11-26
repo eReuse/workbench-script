@@ -20,6 +20,12 @@ import logging
 from datetime import datetime
 import time
 
+# ANSI Colors
+C_RED = "\033[91m"
+C_GREEN = "\033[92m"
+C_YELLOW = "\033[93m"
+C_BOLD = "\033[1m"
+C_END = "\033[0m"
 
 SNAPSHOT_BASE = {
     'timestamp': "",
@@ -32,6 +38,33 @@ SNAPSHOT_BASE = {
     'erase': []
 }
 
+## UI Helpers ##
+
+def print_header(text):
+    print(f"\n{C_BOLD}{'='*60}{C_END}")
+    print(f"{C_BOLD}{text.center(60)}{C_END}")
+    print(f"{C_BOLD}{'='*60}{C_END}")
+
+def print_success(text):
+    print(f"{C_GREEN}{text}{C_END}")
+
+def print_warning(text):
+    print(f"{C_YELLOW}{text}{C_END}")
+
+def print_error(text):
+    print(f"{C_RED}{text}{C_END}")
+
+def ask_user(question, default="n"):
+    prompt = " [Y/n]" if default == "y" else " [y/N]"
+    while True:
+        sys_response = input(f"\n{C_BOLD}{question}{prompt}{C_END}: ").strip().lower()
+        if not sys_response:
+            return True if default == "y" else False
+        if sys_response in ['y', 'yes', 's', 'si']:
+            return True
+        if sys_response in ['n', 'no']:
+            return False
+        print_warning(_("Please enter 'y' or 'n'."))
 
 ## Utility Functions ##
 def logs(f):
@@ -199,7 +232,7 @@ def nvme_secure_erase(disk):
 @logs
 def get_disks():
     disks = json.loads(
-        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
+        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN,MODEL,SIZE')
     )
     return disks.get('blockdevices', [])
 
@@ -345,6 +378,8 @@ def create_snapshot(data, config, sign=True):
 
 
 def send_snapshot(snapshot_json, snap_uuid, config):
+
+    print_header(_("Sending snapshot: {}".format(snap_uuid)))
     legacy = config.get("legacy", None)
     disable_qr = config.get("disable_qr", None)
 
@@ -481,14 +516,14 @@ def send_snapshot_to_devicehub(snapshot_json, token, url, ev_uuid, legacy, disab
                         dhid = response.get('dhid')
                         if public_url:
                             generate_qr_code(public_url, disable_qr)
-                            print("url: {}".format(public_url))
+                            print(_("url: {}").format(public_url))
                         if dhid:
-                            print("dhid: {}".format(dhid))
+                            print(_("dhid: {}").format(dhid))
                     except Exception:
                         logger.error(response_text)
                 else:
                     generate_qr_code(ev_url, disable_qr)
-                    print("url: {}".format(ev_url))
+                    print(_("url: {}").format(ev_url))
                 return
             else:
                 logger.error(
@@ -607,7 +642,7 @@ def get_displays():
                 with open(status_file, "r") as f:
                     status = f.read().strip()
             except Exception as e:
-                print(f"Error reading {status_file}: {e}")
+                print_error(_("Error reading {}: {}").format(status_file, e))
 
         if status == "connected":
             edid_hex = None
@@ -616,7 +651,7 @@ def get_displays():
                     edid_data = f.read()
                     edid_hex = edid_data.hex()
             except Exception as e:
-                print(f"Error reading EDID from {edid_file}: {e}")
+                print_error(_("Error reading EDID from {}: {}").format(edid_file, e))
 
             monitor = {
                 "connector": connector_name,
@@ -629,10 +664,11 @@ def get_displays():
     return displays
 
 def handle_interactive_mode(config):
-    print("\n" + "=" * 50 + " \n CONFIGURATION MODE \n " + "=" * 50)
-    print("\nStep 1: Disconnect all displays except the ones required to run Workbench.")
-    print("        These remaining displays will be EXCLUDED from analysis.\n")
-    input(">> Press ENTER once you are ready... ")
+    print_header(_("CONFIGURATION MODE"))
+    print(_("\nStep 1: Disconnect all displays except the ones required to run Workbench."))
+    print(_("        These remaining displays will be EXCLUDED from analysis.\n"))
+
+    input(_(">> Press ENTER once you are ready... "))
 
     while True:
         excluded_monitors = {}
@@ -641,17 +677,18 @@ def handle_interactive_mode(config):
             monitors = get_displays() or []
             disks = [ d for d in get_disks() if d.get("type") == "disk"]
 
-            print("\nDetected displays/disks to exclude:")
-            print("-" * 50)
+
+            print_warning(_("\nDetected displays/disks to exclude:"))
+            print("-" * 60)
             if monitors:
-                print("Displays:")
+                print(_("Displays:"))
                 for m in monitors:
-                    print(f"  • {m.get('connector')}")
+                    print(f"    {m.get('connector')}")
             else:
-                print("  (No displays detected)")
+                print(_("  (No displays detected)"))
 
             if disks:
-                print("Disks:")
+                print(_("Disks:"))
                 for d in disks:
                     name = d.get("name")
                     model = d.get("model", "")
@@ -659,52 +696,46 @@ def handle_interactive_mode(config):
                     size = d.get("size", "")
                     print(f" {name}: {model} ({disk_type}) - {size}")
             else:
-                print("  (No disks detected)")
-            print("-" * 50)
+                print(_("  (No disks detected)"))
+            print("-" * 60)
 
-
-            if input("\nConfirm exclusion of these displays/disks? [y/N]: ") == "y":
+            if ask_user(_("Confirm exclusion of these displays/disks?"), default="y"):
                 excluded_monitors = monitors
                 excluded_disks = [d.get("name") for d in disks]
                 break
             else:
-                print("\n Exclusion cancelled. Retrying...\n")
+                print_warning(_("\n Exclusion cancelled. Retrying...\n"))
                 continue
         except Exception as e:
-            print(_("Error while detecting devices: {} "), e)
+            print_error(_("Error while detecting devices: {} ").format(e))
 
-    print("\n" + "=" * 50)
-    print("Initial configuration completed.")
-    print("-" * 50)
-
+    print_header(_("Initial configuration completed."))
 
     if excluded_monitors:
-        print("\nExcluded Displays:")
+        print(_("\nExcluded Displays:"))
         for m in excluded_monitors:
-            print(f"  • {m.get('connector')}")
+            print(f"    {m.get('connector')}")
     else:
-        print("\nNo displays excluded.")
+        print(_("\nNo displays excluded."))
 
     if excluded_disks:
-        print("\nExcluded Disks:")
+        print(_("\nExcluded Disks:"))
         for d in excluded_disks:
-            print(f"  • {d}")
+            print(f"    {d}")
     else:
-        print("\nNo disks excluded.")
-    print("=" * 50 + "\n")
-
-    print(_("\n Step 2: Connect the disks/displays you want to analyze."))
+        print(_("\nNo disks excluded. \n"))
 
     while True:
+        print_header(_("Connect the disks/displays you want to analyze."))
         try:
             if config.get("display_server", None):
-                display_mode(config, excluded_monitors)
                 input(_("\n>> Press ENTER to scan for new displays or 'Ctrl + C' to exit..."))
+                display_mode(config, excluded_monitors)
             else:
                 input(_("\n>> Press ENTER to scan for new disks or 'Ctrl + C' to exit..."))
                 disk_mode(config, excluded_disks)
         except (KeyboardInterrupt, EOFError):
-            print(_("\nExiting interactive mode..."))
+            print_warning(_("\nExiting interactive mode..."))
             break
 
 
@@ -712,7 +743,7 @@ def disk_mode(config, excluded_disks):
     try:
         all_disks = get_disks() or []
         excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
-        excluded_names =[]
+        # excluded_names = {} LOCAL DEBUG
 
         candidates = []
         for d in all_disks:
@@ -728,86 +759,94 @@ def disk_mode(config, excluded_disks):
                 continue
 
         if not candidates:
-            input("\n No additional disks found for analysis.\n>> Press ENTER to retry or 'Ctrl + C' to exit...")
+            print_warning(_("\n No additional disks found for analysis."))
             return
 
-        print("\n" + "=" * 50)
-        print("Available disks for analysis:")
-        print("-" * 50)
-        for d in candidates:
+        print_header(_("Available disks for analysis"))
 
+        # TABLE HEADER
+        h_name = _("NAME")
+        h_type = _("TYPE")
+        h_size = _("SIZE")
+        h_model = _("MODEL")
+
+        print(f"{C_BOLD}{h_name:<10} {h_type:<8} {h_size:<10} {h_model}{C_END}")
+        print("-" * 60)
+
+        for d in candidates:
             name = d.get("name")
-            model = d.get("model", "N/A")
+            model = d.get("model", _("N/A"))
             rota = d.get("rota")
             disk_type = "HDD" if rota else "SSD"
             size = d.get("size", "")
-            print(f" {name}: {model} ({disk_type}) - {size}")
-        print("=" * 50)
 
-        if input(_("\n Do you want to create a snapshot of these disk(s)? [y/N]: ")) != "y":
-            print("\nSkipping snapshot. Retrying...\n")
+            color = C_YELLOW if rota else C_GREEN
+
+            print(f"{color}{name:<10} {disk_type:<8} {size:<10} {model}{C_END}")
+        print("=" * 60)
+
+        if not ask_user(_("Do you want to create a snapshot of these disk(s)?")):
+            print_warning(_("\nSkipping snapshot. Retrying...\n"))
             return
 
         snaps = []
         failed_disks = 0
         for disk in candidates:
             disk_name = disk.get("name")
-            print(f"\nCreating snapshot for disk: {disk_name}")
+            print_header(_("Creating snapshot for disk: {}").format(disk_name))
 
             if not os.path.exists(f"/dev/{disk_name}"):
-                logger.warning(_("Disk %s is no longer connected. Skipping."), disk_name)
+                print_warning(_("Disk %s is no longer connected. Skipping.") % disk_name)
                 failed_disks += 1
                 continue
+
             snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
             if not snapshot_dict or not snap_uuid:
-                logger.error(_("Failed to generate snapshot data for %s."), disk_name)
+                print_error(_("Failed to generate snapshot data for %s.") % disk_name)
                 failed_disks += 1
                 continue
 
             snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
             snaps.append((snapshot_json, snap_uuid))
 
-        print(f"  {failed_disks} disks failed or were skipped.")
+        if failed_disks > 0:
+            print_warning(_("  {} disks failed or were skipped.").format(failed_disks))
 
         for snapshot_json, snap_uuid in snaps:
             send_snapshot(snapshot_json, snap_uuid, config)
 
-        print("\n All disk snapshots processed successfully.\n")
+        print_success(_("\n All disk snapshots processed successfully.\n"))
         return
 
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(f"Error: {e}")
 
 
 def display_mode(config, excluded_monitors):
     try:
         m = get_displays() or []
         excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
-        #For local test on one display use empty dict
-        excluded_hex ={}
+        #excluded_hex = {} Local Debug
+
         displays = [
             m for m in m if m.get("edid_hex") not in excluded_hex
         ]
         if not displays:
-            input("\n No additional displays found for analysis.\n>> Press ENTER to retry or 'Ctrl + C' to exit...")
+            print_warning(_("\n No additional displays found for analysis.\n"))
             return
 
-        print("\n" + "=" * 50)
-        print("Available displays for analysis:")
-        print("-" * 50)
+        print_header(_("Available displays for analysis"))
         for d in displays:
-            print(f" • {d.get('connector')}")
-        print("=" * 50)
+            print(f"   {d.get('connector')}")
+        print("=" * 60)
 
-        if input(_("\n Do you want to create a snapshot of these display(s)? [y/N]: ")) == "y":
-            pass
-        else:
-            print("\nSkipping snapshot. Retrying...\n")
+        if not ask_user(_("Do you want to create a snapshot of these display(s)?"), default="y"):
+            print_warning(_("\nSkipping snapshot. Retrying...\n"))
             return
 
         snaps = []
         for display in displays:
-            print(f"\nCreating snapshot for disk: {display.get('connector')}")
+            print_header(_("Creating snapshot for display: {}").format(display.get('connector')))
             snapshot_dict, snap_uuid = gen_display_snapshot(display, config)
             snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
             snaps.append((snapshot_json, snap_uuid))
@@ -816,11 +855,11 @@ def display_mode(config, excluded_monitors):
             send_snapshot(snapshot_json, snap_uuid, config)
 
 
-        print("\n All snapshots processed successfully.\n")
+        print_success(_("\n All snapshots processed successfully.\n"))
         return
 
     except Exception as e:
-        print(f"Error: {e}")
+        print_error(f"Error: {e}")
 
 
 def main():
