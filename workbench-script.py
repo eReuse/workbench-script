@@ -381,7 +381,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
     }
 
     retries = 1
-    while retries < http_max_retries:
+    while retries <= http_max_retries:
         try:
             data = snapshot.encode('utf-8')
             status_code, response_text = http_post(url, data, headers)
