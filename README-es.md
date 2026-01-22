@@ -159,6 +159,27 @@ El script solo necesita `python` en tu sistema y no tiene dependencias externas,
 
 Esta sección también la podríamos considerar en cierta manera, un rápido *entorno de desarrollo* de la herramienta.
 
+## Actualizar y revisar traducciones
+
+Para actualizar estado de traducciones contra la versión más reciente de workbench, ejecutar:
+
+```
+make es_gen
+```
+
+Aparecerán modificaciones autogeneradas y pendientes de corregir en los siguientes ficheros:
+
+```
+locale/es/LC_MESSAGES/messages.mo (binario)
+locale/es/LC_MESSAGES/messages.po
+```
+
+Para forzar la localización a español (por si el sistema no está así por defecto), arrancar así:
+
+```
+LC_ALL=es_ES.UTF-8 python workbench-script.py
+```
+
 ## Acerca de eReuse
 
 workbench-script es una herramienta desarrollada por [eReuse](https://ereuse.org/) que permite recopilar datos de los PCs con el propósito de aportar trazabilidad durante todo su ciclo de vida. Forma parte del ecosistema de software libre de eReuse, orientado a fomentar la reutilización de dispositivos electrónicos, facilitar su diagnóstico y asegurar una gestión responsable desde el uso hasta el reciclaje.

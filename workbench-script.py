@@ -365,7 +365,7 @@ def send_snapshot_to_idhub(snapshot, token, url):
                 return res["data"]
             return json.dumps(snapshot)
         else:
-            logger.error(_("Credential cannot signed in '%s'"), url)
+            logger.error(_("Failed to sign credential. URL: '%s'"), url)
             return json.dumps(snapshot)
 
     except Exception as e:
