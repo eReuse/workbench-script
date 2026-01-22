@@ -41,26 +41,23 @@ create_iso() {
         # Creating ISO
         iso_path=""${ISO_PATH}"/${iso_name}.iso"
 
-        # 0x14 is FAT16 Hidden FAT16 <32, this is the only format detected in windows10 automatically when using a persistent volume of 10 MB
+        # 0x0e is FAT16
+        # inspired by https://wiki.debian.org/RepackBootableISO
         ${SUDO} xorrisofs \
                 -verbose \
-                -iso-level 3 \
+                -r -V "${iso_name}" \
                 -o "${iso_path}" \
-                -full-iso9660-filenames \
-                -volid "${iso_name}" \
+                -J -J -joliet-long -cache-inodes \
                 -isohybrid-mbr /usr/lib/ISOLINUX/isohdpfx.bin \
-                -eltorito-boot \
-                isolinux/isolinux.bin \
-                -no-emul-boot \
-                -boot-load-size 4 \
-                -boot-info-table \
-                --eltorito-catalog isolinux/isolinux.cat \
+                -eltorito-boot isolinux/isolinux.bin \
+                -eltorito-catalog isolinux/isolinux.cat \
+                -boot-load-size 4 -boot-info-table -no-emul-boot \
                 -eltorito-alt-boot \
                 -e /EFI/boot/efiboot.img \
-                -no-emul-boot \
-                -isohybrid-gpt-basdat \
-                -append_partition 2 0xef "${ISO_PATH}"/staging/EFI/boot/efiboot.img \
-                -append_partition 3 0x14 "${rw_img_path}" \
+                -partition_offset 16 \
+                -no-emul-boot -isohybrid-gpt-basdat -isohybrid-apm-hfsplus \
+                -append_partition 2 0x0e "${rw_img_path}" \
+                -append_partition 3 0xef "${ISO_PATH}"/staging/EFI/boot/efiboot.img \
                 "${ISO_PATH}/staging"
 
         printf "\n\n  Image generated in ${iso_path}\n\n"
@@ -191,7 +188,7 @@ create_persistence_partition() {
         if [ ! -f "${rw_img_path}" ] || [ "${DEBUG:-}" ] || [ "${FORCE:-}" ]; then
                 persistent_volume_size_MB=100
                 ${SUDO} dd if=/dev/zero of="${rw_img_path}" bs=1M count=${persistent_volume_size_MB}
-                ${SUDO} mkfs.vfat "${rw_img_path}"
+                ${SUDO} mkfs.vfat -F 16 -n "WB_DATA" "${rw_img_path}"
 
                 # generate structure on persistent partition
                 tmp_rw_mount="/tmp/${rw_img_name}"
@@ -215,7 +212,7 @@ create_persistence_partition() {
 
                 ${SUDO} umount "${tmp_rw_mount}"
 
-                uuid="$(blkid "${rw_img_path}" | awk '{ print $3; }')"
+                uuid="$(blkid -s UUID -o value "${rw_img_path}")"
                 # no fail on boot -> src https://askubuntu.com/questions/14365/mount-an-external-drive-at-boot-time-only-if-it-is-plugged-in/99628#99628
                 # use tee instead of cat -> src https://stackoverflow.com/questions/2953081/how-can-i-write-a-heredoc-to-a-file-in-bash-script/17093489#17093489
                 ${SUDO} tee "${ISO_PATH}/chroot/etc/fstab" <<END
@@ -223,7 +220,7 @@ create_persistence_partition() {
 # UNCONFIGURED FSTAB FOR BASE SYSTEM
 overlay / overlay rw 0 0
 tmpfs /tmp tmpfs nosuid,nodev 0 0
-${uuid} /mnt vfat defaults,nofail 0 0
+UUID=${uuid} /mnt vfat defaults,nofail 0 0
 END
   fi
         # src https://manpages.debian.org/testing/open-infrastructure-system-boot/persistence.conf.5.en.html
