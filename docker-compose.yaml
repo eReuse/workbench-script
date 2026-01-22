@@ -9,5 +9,8 @@ services:
       - DEBUG=true
       - USER=root
     volumes:
-      - .:/opt/workbench-script:ro
+      # the only reason to write is just (probably):
+      #   + cp -v settings.ini.example settings.ini
+      #   'settings.ini.example' -> 'settings.ini'
+      - .:/opt/workbench-script:rw
       - ./iso:/opt/workbench-script/iso:rw
