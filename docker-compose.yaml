@@ -4,9 +4,9 @@ services:
     build: .
     # this is needed to mount inside docker
     privileged: true
-    # uncomment next two lines to test this
     environment:
-      - DEBUG=true
+      # uncomment to have faster build (useful for development)
+      #- DEBUG=true
       - USER=root
     volumes:
       # the only reason to write is just (probably):
