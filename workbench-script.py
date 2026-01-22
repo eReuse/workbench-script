@@ -11,6 +11,7 @@ import argparse
 import configparser
 import urllib.parse
 import urllib.request
+import urllib.error
 
 import gettext
 import locale
@@ -309,13 +310,26 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
-def http_post(url, data, headers):
+def http_post(url, data, headers, redirect_depth=0):
     """Send a POST request with given headers and JSON data."""
+
+    MAX_REDIRECTS = 5
+    if redirect_depth > MAX_REDIRECTS:
+        err_msg = "Error: Too many redirects (limit {})".format(MAX_REDIRECTS)
+        logger.error(err_msg)
+        return 0, err_msg
     try:
         request = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(request) as response:
             status_code = response.getcode()
             response_text = response.read().decode('utf-8')
+    except urllib.error.HTTPError as e:
+        if e.code in (301, 302, 307, 308):
+            new_location = e.headers.get('Location')
+            if new_location:
+                new_url = urllib.parse.urljoin(url, new_location)
+                logger.info(_("Redirect %s detected. Retrying POST to: %s"), e.code, new_url)
+                return http_post(new_url, data, headers, redirect_depth + 1)
     except urllib.error.HTTPError as e:
         status_code = e.code
         response_text = e.read().decode('utf-8')
