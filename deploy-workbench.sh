@@ -334,7 +334,8 @@ echo 'Install requirements'
 apt-get install -y --no-install-recommends \
   sudo locales keyboard-configuration console-setup qrencode \
   python-is-python3 python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi < /dev/null
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi \
+  firmware-linux firmware-linux-nonfree firmware-realtek firmware-iwlwifi < /dev/null
 
 echo 'Install sanitize requirements'
 
@@ -363,9 +364,12 @@ echo workbench > /etc/hostname
 
 backports_path="/etc/apt/sources.list.d/backports.list"
 if [ ! -f "\${backports_path}" ]; then
-  backports_repo='deb http://deb.debian.org/debian ${VERSION_CODENAME}-backports main contrib'
+  backports_repo='deb http://deb.debian.org/debian ${VERSION_CODENAME}-backports main contrib non-free non-free-firmware'
   printf "\${backports_repo}" > "\${backports_path}"
 fi
+
+# add nonfree to repo when necessary
+sed -i 's/main$/main contrib non-free non-free-firmware/g' "/etc/apt/sources.list"
 
 # this env var confuses sudo detection
 unset SUDO_USER
