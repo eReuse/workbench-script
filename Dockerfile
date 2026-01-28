@@ -1,10 +1,10 @@
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 # detect DOCKER_BUILD condition/situation in install script
 ENV DOCKER_BUILD true
 
 # pre install sudo
-RUN apt update && apt install sudo && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y sudo && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
 COPY ./install-dependencies.sh /

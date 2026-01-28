@@ -7,6 +7,8 @@ services:
     environment:
       # uncomment to have faster build (useful for development)
       #- DEBUG=true
+      # force by default looks more appropriate to me
+      - FORCE=y
       - USER=root
     volumes:
       # the only reason to write is just (probably):
