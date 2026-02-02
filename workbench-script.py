@@ -233,7 +233,7 @@ def nvme_secure_erase(disk):
 @logs
 def get_disks():
     disks = json.loads(
-        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
+        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN,MODEL,SIZE')
     )
     return disks.get('blockdevices', [])
 
@@ -297,26 +297,106 @@ def smartctl(all_disks, disk=None):
 
 # TODO permitir selección
 # TODO permitir que vaya más rápido
-def get_data(all_disks):
+def collect_device_data(all_disks):
     dmidecode = 'sudo dmidecode'
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
-
-    data = {
+    return {
         'smartctl': smartctl(all_disks),
         'dmidecode': exec_cmd(dmidecode),
-        'inxi': exec_cmd(inxi)
+        'inxi': exec_cmd(inxi),
+        'snapshot_type': "Device",
     }
 
-    return data
+
+def collect_display_data(display):
+    edid_decode = f'sudo edid-decode -s -n {display["edid_path"]}'
+    return {
+        'edid_hex': display["edid_hex"],
+        'edid_decode': exec_cmd(edid_decode),
+        'snapshot_type': "Display",
+    }
 
 
-def gen_snapshot(all_disks):
+def collect_disk_data(disk):
+    _smart_output = exec_cmd(f"sudo smartctl -a -j /dev/{disk.get('name')}")
+    _lsblk_output = exec_cmd(f"lsblk -o NAME,SIZE,MODEL,SERIAL,TRAN,ROTA,MOUNTPOINTS -J /dev/{disk.get('name')}" )
+
+    return {
+        "smartctl":json.loads(_smart_output),
+        "lsblk": json.loads(_lsblk_output),
+        "snapshot_type": "Disk",
+    }
+
+
+def gen_device_snapshot(config):
+    legacy = config.get("legacy", None)
+
+    all_disks = get_disks()
+    erase_data = None
+    if config['erase'] and config['device'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'], user_disk=config['device'])
+    elif config['erase'] and not legacy:
+        erase_data = gen_erase(all_disks, config['erase'])
+
+    data = collect_device_data(all_disks)
+    if erase_data:
+        data['erase'] = erase_data
+
+    # legacy snapshots aren't sent to idhub
+    snap, uuid = create_snapshot(data, config, sign=not legacy)
+    if legacy:
+        convert_to_legacy_snapshot(snap)
+
+    return snap, uuid
+
+
+def gen_display_snapshot(display, config):
+    data = collect_display_data(display)
+    return create_snapshot(data, config, sign= False)
+
+def gen_disk_snapshot(disk, config):
+    data = collect_disk_data(disk)
+    return create_snapshot(data, config, sign=False)
+
+def create_snapshot(data, config, sign=True):
     snapshot = SNAPSHOT_BASE.copy()
-    snapshot['data'] = get_data(all_disks)
-    return snapshot
+    snap_uuid = str(uuid.uuid4())
+    snapshot.update({
+        "timestamp": str(datetime.now()),
+        "uuid": snap_uuid,
+        "data": data,
+    })
+
+    wb_sign_token = config.get("wb_sign_token")
+    if wb_sign_token:
+        tk = wb_sign_token.encode("utf8")
+        snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
+
+    if sign and wb_sign_token and config.get("url_wallet"):
+        return send_snapshot_to_idhub(snapshot, wb_sign_token, config["url_wallet"]), snap_uuid
+
+    return snapshot, snap_uuid
 
 
-def save_snapshot_in_disk(snapshot, path, snap_uuid):
+def send_snapshot(snapshot_json, snap_uuid, config):
+    print_header(_("Sending snapshot {} \nto {}".format(snap_uuid, config['url'])))
+    legacy = config.get("legacy", None)
+    disable_qr = config.get("disable_qr", None)
+
+    if config.get('url'):
+        send_snapshot_to_devicehub(
+            snapshot_json,
+            config['token'],
+            config['url'],
+            snap_uuid,
+            legacy,
+            disable_qr
+        )
+
+
+def save_snapshot_in_disk(snapshot_dict, snap_uuid, config):
+    snapshot_json = json.dumps(snapshot_dict)
+    path = config['path']
     snapshot_path = os.path.join(path, 'snapshots')
 
     filename = "{}/{}_{}.json".format(
@@ -383,7 +463,13 @@ def send_snapshot_to_idhub(snapshot, token, url):
         cred = {
             "type": "DeviceSnapshotV1",
             "save": False,
-            "data": snapshot
+            "data": {
+                "operator_id": snapshot["operator_id"],
+                "dmidecode": snapshot["data"]["dmidecode"],
+                "inxi": snapshot["data"]["inxi"],
+                "smartctl": snapshot["data"]["smartctl"],
+                "uuid": snapshot["uuid"],
+            }
         }
 
         data = json.dumps(cred).encode('utf-8')
@@ -557,6 +643,244 @@ def prepare_logger():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+def get_displays():
+    displays = []
+
+    #https://askubuntu.com/questions/81370/how-to-create-extract-the-edid-for-from-a-monitor
+    for edid_file in glob.glob("/sys/class/drm/*/edid"):
+        connector_dir = os.path.dirname(edid_file)
+        status_file = os.path.join(connector_dir, "status")
+
+        connector_name = os.path.basename(connector_dir)
+
+        status = None
+        if os.path.isfile(status_file):
+            try:
+                with open(status_file, "r") as f:
+                    status = f.read().strip()
+            except Exception as e:
+                print_error(_("Error reading {}: {}").format(status_file, e))
+
+        if status == "connected":
+            edid_hex = None
+            try:
+                with open(edid_file, "rb") as f:
+                    edid_data = f.read()
+                    edid_hex = edid_data.hex()
+            except Exception as e:
+                print_error(_("Error reading EDID from {}: {}").format(edid_file, e))
+
+            monitor = {
+                "connector": connector_name,
+                "status": status,
+                "edid_path": edid_file,
+                "edid_hex": edid_hex
+            }
+            displays.append(monitor)
+
+    return displays
+
+def handle_interactive_mode(config):
+    print_header(_("CONFIGURATION MODE"))
+    print(_("\nStep 1: Disconnect all displays except the ones required to run Workbench."))
+    print(_("        These remaining displays will be EXCLUDED from analysis.\n"))
+
+    input(_(">> Press ENTER once you are ready... "))
+
+    while True:
+        excluded_monitors = {}
+        excluded_disks = {}
+        try:
+            monitors = get_displays() or []
+            disks = [ d for d in get_disks() if d.get("type") == "disk"]
+
+
+            print_warning(_("\nDetected displays/disks to exclude:"))
+            print("-" * 60)
+            if monitors:
+                print(_("Displays:"))
+                for m in monitors:
+                    print(f"    {m.get('connector')}")
+            else:
+                print(_("  (No displays detected)"))
+
+            if disks:
+                print(_("Disks:"))
+                for d in disks:
+                    name = d.get("name")
+                    model = d.get("model", "")
+                    disk_type = "HDD" if d.get("rota") else "SSD"
+                    size = d.get("size", "")
+                    print(f" {name}: {model} ({disk_type}) - {size}")
+            else:
+                print(_("  (No disks detected)"))
+            print("-" * 60)
+
+            if ask_user(_("Confirm exclusion of these displays/disks?"), default="y"):
+                excluded_monitors = monitors
+                excluded_disks = [d.get("name") for d in disks]
+                break
+            else:
+                print_warning(_("\n Exclusion cancelled. Retrying...\n"))
+                continue
+        except Exception as e:
+            print_error(_("Error while detecting devices: {} ").format(e))
+
+    print_header(_("Initial configuration completed."))
+
+    if excluded_monitors:
+        print(_("\nExcluded Displays:"))
+        for m in excluded_monitors:
+            print(f"    {m.get('connector')}")
+    else:
+        print(_("\nNo displays excluded."))
+
+    if excluded_disks:
+        print(_("\nExcluded Disks:"))
+        for d in excluded_disks:
+            print(f"    {d}")
+    else:
+        print(_("\nNo disks excluded. \n"))
+
+    while True:
+        print_header(_("Connect the disks/displays you want to analyze."))
+        try:
+            if config.get("display_server", None):
+                input(_("\n>> Press ENTER to scan for new displays or 'Ctrl + C' to exit..."))
+                display_mode(config, excluded_monitors)
+            else:
+                input(_("\n>> Press ENTER to scan for new disks or 'Ctrl + C' to exit..."))
+                disk_mode(config, excluded_disks)
+        except (KeyboardInterrupt, EOFError):
+            print_warning(_("\nExiting interactive mode..."))
+            break
+
+
+def disk_mode(config, excluded_disks):
+    try:
+        all_disks = get_disks() or []
+        excluded_names = {d if isinstance(d, str) else d.get("name") for d in (excluded_disks or [])}
+        # empty dict for local debug
+        #excluded_names = {}
+
+        candidates = []
+        for d in all_disks:
+            try:
+                if d.get("type") != "disk":
+                    continue
+                if 'boot' in d.get('mountpoints', []):
+                    continue
+                if d.get("name") in excluded_names:
+                    continue
+                candidates.append(d)
+            except Exception:
+                continue
+
+        if not candidates:
+            print_warning(_("\n No additional disks found for analysis."))
+            return
+
+        print_header(_("Available disks for analysis"))
+
+        # TABLE HEADER
+        h_name = _("NAME")
+        h_type = _("TYPE")
+        h_size = _("SIZE")
+        h_model = _("MODEL")
+
+        print(f"{C_BOLD}{h_name:<10} {h_type:<8} {h_size:<10} {h_model}{C_END}")
+        print("-" * 60)
+
+        for d in candidates:
+            name = d.get("name")
+            model = d.get("model", _("N/A"))
+            rota = d.get("rota")
+            disk_type = "HDD" if rota else "SSD"
+            size = d.get("size", "")
+
+            color = C_YELLOW if rota else C_GREEN
+
+            print(f"{color}{name:<10} {disk_type:<8} {size:<10} {model}{C_END}")
+        print("=" * 60)
+
+        if not ask_user(_("Do you want to create a snapshot of these disk(s)?")):
+            print_warning(_("\nSkipping snapshot. Retrying...\n"))
+            return
+
+        snaps = []
+        failed_disks = 0
+        for disk in candidates:
+            disk_name = disk.get("name")
+            print_header(_("Creating snapshot for disk: {}").format(disk_name))
+
+            if not os.path.exists(f"/dev/{disk_name}"):
+                print_warning(_("Disk %s is no longer connected. Skipping.") % disk_name)
+                failed_disks += 1
+                continue
+
+            snapshot_dict, snap_uuid = gen_disk_snapshot(disk, config)
+            if not snapshot_dict or not snap_uuid:
+                print_error(_("Failed to generate snapshot data for %s.") % disk_name)
+                failed_disks += 1
+                continue
+
+            snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+            snaps.append((snapshot_json, snap_uuid))
+
+        if failed_disks > 0:
+            print_warning(_("  {} disks failed or were skipped.").format(failed_disks))
+
+        for snapshot_json, snap_uuid in snaps:
+            send_snapshot(snapshot_json, snap_uuid, config)
+
+        print_success(_("\n All disk snapshots processed successfully.\n"))
+        return
+
+    except Exception as e:
+        print_error(f"Error: {e}")
+
+
+def display_mode(config, excluded_monitors):
+    try:
+        m = get_displays() or []
+        excluded_hex = {hex.get("edid_hex") for hex in excluded_monitors}
+        #empty list for local debug
+        # excluded_hex = {}
+
+        displays = [
+            m for m in m if m.get("edid_hex") not in excluded_hex
+        ]
+        if not displays:
+            print_warning(_("\n No additional displays found for analysis.\n"))
+            return
+
+        print_header(_("Available displays for analysis"))
+        for d in displays:
+            print(f"   {d.get('connector')}")
+        print("=" * 60)
+
+        if not ask_user(_("Do you want to create a snapshot of these display(s)?")):
+            print_warning(_("\nSkipping snapshot. Retrying...\n"))
+            return
+
+        snaps = []
+        for display in displays:
+            print_header(_("Creating snapshot for display: {}").format(display.get('connector')))
+            snapshot_dict, snap_uuid = gen_display_snapshot(display, config)
+            snapshot_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+            snaps.append((snapshot_json, snap_uuid))
+
+        for snapshot_json, snap_uuid in snaps:
+            send_snapshot(snapshot_json, snap_uuid, config)
+
+
+        print_success(_("\n All snapshots processed successfully.\n"))
+        return
+
+    except Exception as e:
+        print_error(f"Error: {e}")
+
+
 def main():
     prepare_lang()
     prepare_logger()
@@ -570,51 +894,26 @@ def main():
     config_file = args.config
 
     config = load_config(config_file)
-    legacy = config.get("legacy")
 
     # TODO show warning if non root, means data is not complete
     #   if annotate as potentially invalid snapshot (pending the new API to be done)
     if os.geteuid() != 0:
         logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
 
-    all_disks = get_disks()
-    snapshot = gen_snapshot(all_disks)
-    snap_uuid = snapshot["uuid"]
+    # --- Interactive Mode ---
+    if config.get("display_server") or config.get("disk_server") :
+        config["legacy"] = None
+        handle_interactive_mode(config)
+        logger.info(_("END"))
+        return
 
-    if config['erase'] and config['device'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
-    elif config['erase'] and not legacy:
-        snapshot['erase'] = gen_erase(all_disks, config['erase'])
+    # --- Normal Mode ---
+    snapshot_dict, snap_uuid = gen_device_snapshot(config)
+    snap_json = save_snapshot_in_disk(snapshot_dict, snap_uuid, config)
+    if not snap_json:
+        logger.info(_("Error creating device Snapshot. Aborting"))
 
-    if legacy:
-        convert_to_legacy_snapshot(snapshot)
-        snapshot = json.dumps(snapshot)
-    else:
-        url_wallet = config.get("url_wallet")
-        wb_sign_token = config.get("wb_sign_token")
-
-        if wb_sign_token:
-            tk = wb_sign_token.encode("utf8")
-            snapshot["operator_id"] = hashlib.sha3_256(tk).hexdigest()
-
-        if url_wallet and wb_sign_token:
-            snapshot = send_snapshot_to_idhub(snapshot, wb_sign_token, url_wallet)
-        else:
-            snapshot = json.dumps(snapshot)
-
-    save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
-
-    if config['url']:
-        send_snapshot_to_devicehub(
-            snapshot,
-            config['token'],
-            config['url'],
-            snap_uuid,
-            legacy,
-            config['disable_qr'],
-            config['http_max_retries'],
-            config['http_retry_delay']
-        )
+    send_snapshot(snap_json, snap_uuid, config)
 
     logger.info(_("END"))
 
