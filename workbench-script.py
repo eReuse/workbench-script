@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import os
+import glob
 import json
 import uuid
 import hashlib
@@ -20,11 +21,17 @@ import logging
 from datetime import datetime
 import time
 
+# ANSI Colors
+C_RED = "\033[91m"
+C_GREEN = "\033[92m"
+C_YELLOW = "\033[93m"
+C_BOLD = "\033[1m"
+C_END = "\033[0m"
 
 SNAPSHOT_BASE = {
-    'timestamp': str(datetime.now()),
+    'timestamp': "",
     'type': 'Snapshot',
-    'uuid': str(uuid.uuid4()),
+    'uuid': "",
     'software': "workbench-script",
     'version': "0.0.1",
     'operator_id': "",
@@ -32,6 +39,33 @@ SNAPSHOT_BASE = {
     'erase': []
 }
 
+## UI Helpers ##
+
+def print_header(text):
+    print(f"\n{C_BOLD}{'='*60}{C_END}")
+    print(f"{C_BOLD}{text.center(60)}{C_END}")
+    print(f"{C_BOLD}{'='*60}{C_END}")
+
+def print_success(text):
+    print(f"{C_GREEN}{text}{C_END}")
+
+def print_warning(text):
+    print(f"{C_YELLOW}{text}{C_END}")
+
+def print_error(text):
+    print(f"{C_RED}{text}{C_END}")
+
+def ask_user(question, default="n"):
+    prompt = " [Y/n]" if default == "y" else " [y/N]"
+    while True:
+        sys_response = input(f"\n{C_BOLD}{question}{prompt}{C_END}: ").strip().lower()
+        if not sys_response:
+            return True if default == "y" else False
+        if sys_response in ['y', 'yes', 's', 'si']:
+            return True
+        if sys_response in ['n', 'no']:
+            return False
+        print_warning(_("Please enter 'y' or 'n'."))
 
 ## Utility Functions ##
 def logs(f):
@@ -295,8 +329,9 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
             os.makedirs(snapshot_path)
             logger.info(_("Created snapshots directory at '%s'"), snapshot_path)
         with open(filename, "w") as f:
-            f.write(snapshot)
+            f.write(snapshot_json)
         logger.info(_("Snapshot written in path '%s'"), filename)
+        return snapshot_json
     except Exception as e:
         try:
             logger.warning(_("Attempting to save file in actual path. Reason: Failed to write in snapshots directory:\n    %s."), e)
@@ -305,8 +340,9 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
                 datetime.now().strftime("%Y%m%d-%H_%M_%S"),
                 snap_uuid)
             with open(fallback_filename, "w") as f:
-                f.write(snapshot)
+                f.write(snapshot_json)
                 logger.warning(_("Snapshot written in fallback path '%s'"), fallback_filename)
+                return snapshot_json
         except Exception as e:
             logger.error(_("Could not save snapshot locally. Reason: Failed to write in fallback path:\n    %s"), e)
 
@@ -363,14 +399,14 @@ def send_snapshot_to_idhub(snapshot, token, url):
             res = json.loads(response_text)
             if res.get("status") == "success" and res.get("data"):
                 return res["data"]
-            return json.dumps(snapshot)
+            return snapshot
         else:
             logger.error(_("Failed to sign credential. URL: '%s'"), url)
-            return json.dumps(snapshot)
+            return snapshot
 
     except Exception as e:
         logger.error(_("Credential not remotely signed by IdHub URL '%s'. Do you have internet? Is your server up & running? Is the url token authorized?\n    %s"), url, e)
-        return json.dumps(snapshot)
+        return snapshot
 
 # apt install qrencode
 def generate_qr_code(url, disable_qr):
@@ -382,8 +418,8 @@ def generate_qr_code(url, disable_qr):
 
 # TODO sanitize url, if url is like this, it fails
 #   url = 'http://127.0.0.1:8000/api/snapshot/'
-def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
     """Send snapshot to be stored in devicehub inventory service"""
+def send_snapshot_to_devicehub(snapshot_json, token, url, ev_uuid, legacy, disable_qr, http_max_retries=5, http_retry_delay=5):
     url_components = urllib.parse.urlparse(url)
     ev_path = f"evidence/{ev_uuid}"
     components = (url_components.scheme, url_components.netloc, ev_path, '', '', '')
@@ -397,11 +433,12 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
     retries = 1
     while retries <= http_max_retries:
         try:
-            data = snapshot.encode('utf-8')
+            data = snapshot_json.encode('utf-8')
             status_code, response_text = http_post(url, data, headers)
 
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
+                return True
                 if legacy:
                     try:
                         response = json.loads(response_text)
@@ -432,6 +469,7 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
 
     logger.error(
         _("Failed to send snapshot to URL '%s' after %d attempts"), url, http_max_retries)
+    return False
 
 
 def load_config(config_file="settings.ini"):
@@ -458,10 +496,12 @@ def load_config(config_file="settings.ini"):
         disable_qr = config.get('settings', 'disable_qr', fallback=None)
         http_max_retries = int(config.get('settings', 'http_max_retries', fallback=1))
         http_retry_delay = int(config.get('settings', 'http_retry_delay', fallback=5))
+        display_server = config.get('settings', "display_server", fallback=None)
+        disk_server = config.get('settings', "disk_server", fallback=None)
     else:
         logger.error(_("Config file '%s' not found. Using default values."), config_file)
         path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr = (None,)*8
+        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr, display_server, disk_server = (None,)*10
 
     return {
         'path': path,
@@ -469,6 +509,8 @@ def load_config(config_file="settings.ini"):
         'token': token,
         'device': device,
         'erase': erase,
+        'display_server': display_server,
+        'disk_server': disk_server,
         'legacy': legacy,
         'wb_sign_token': wb_sign_token,
         'url_wallet': url_wallet,
