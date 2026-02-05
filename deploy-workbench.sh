@@ -290,6 +290,44 @@ prepare_app() {
 
         # startup script execution
         ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+
+        workbench_bin_path="${ISO_PATH}/chroot/usr/local/bin/wb"
+        ${SUDO} tee "${workbench_bin_path}" <<END
+#!/bin/sh
+
+# workbench-script
+#   source: https://github.com/eReuse/workbench-script
+
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -e
+set -u
+# DEBUG
+#set -x
+
+main() {
+        # detect pxe env
+        nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
+        if [ "\${nfs_host}" ]; then
+                mount --bind /run/live/medium /mnt
+                # debian live nfs path is readonly, do a trick
+                #   to make snapshots subdir readwrite
+                mount -v \${nfs_host}:/snapshots /run/live/medium/snapshots
+                # reload mounts on systemd
+                systemctl daemon-reload
+        fi
+        # clearly specify the right working directory, used in the python script as os.getcwd()
+        cd /mnt
+        #pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        # works meanwhile this project is vanilla python
+        python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+}
+
+main "\${@:-}"
+END
+
+        ${SUDO} chmod +x "${workbench_bin_path}"
+
         ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
 if [ -f /tmp/workbench_lock ]; then
         return 0
@@ -301,21 +339,7 @@ set -x
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 
-# detect pxe env
-nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
-if [ "\${nfs_host}" ]; then
-        mount --bind /run/live/medium /mnt
-        # debian live nfs path is readonly, do a trick
-        #   to make snapshots subdir readwrite
-        mount -v \${nfs_host}:/snapshots /run/live/medium/snapshots
-        # reload mounts on systemd
-        systemctl daemon-reload
-fi
-# clearly specify the right working directory, used in the python script as os.getcwd()
-cd /mnt
-#pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
-# works meanwhile this project is vanilla python
-python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+wb
 
 stty echo
 set +x
