@@ -287,7 +287,7 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
 
     filename = "{}/{}_{}.json".format(
         snapshot_path,
-        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+        datetime.now().strftime("%F_%H-%M-%S"),
         snap_uuid)
 
     try:
