@@ -487,18 +487,10 @@ prepare_chroot_env() {
                         echo "ERROR: CUSTOM_LANG not supported. Available: es"
                         exit 1
         esac
-        # version of debian the bootstrap is going to build
-        #   if no VERSION_CODENAME is specified we assume that the bootstrap is going to
-        #   be build with the same version of debian being executed because some files
-        #   are copied from our root system
-        if [ -z "${VERSION_CODENAME:-}" ]; then
-                . /etc/os-release
-                echo "TAKING OS-RELEASE FILE"
-                if [ ! "${ID}" = "debian" ]; then
-                        echo "ERROR: ubuntu detected, then you are enforced to specify debian variant"
-                        echo "  use for example \`VERSION_CODENAME='bookworm'\` or similar"
-                        exit 1
-                fi
+
+        if ! grep -q ^ID=debian$ /etc/os-release; then
+                echo "ERROR: only debian is supported (you might try building the iso with our docker version)"
+                exit 1
         fi
 
         chroot_path="${ISO_PATH}/chroot"
