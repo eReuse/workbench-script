@@ -367,6 +367,8 @@ echo 'Install sanitize requirements'
 apt-get install -y --no-install-recommends \
   hdparm nvme-cli < /dev/null
 
+apt autoremove -y
+
 # TODO uncomment when we have dependencies again
 # pipenv run pip install -r /opt/workbench/requirements.txt
 END
