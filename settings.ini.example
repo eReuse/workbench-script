@@ -1,19 +1,5 @@
 [settings]
-url = http://localhost:8000/api/v1/snapshot/
-#url = https://demo.ereuse.org/api/v1/snapshot/
-# sample token that works with default deployment such as the previous two urls
+url = https://demo.ereuse.org/api/v1/snapshot/
 token = 5018dd65-9abd-4a62-8896-80f34ac66150
-
-# Idhub
-# wb_sign_token = 27de6ad7-cee2-4fe8-84d4-c7eea9c969c8
-# url_wallet = http://localhost/webhook/sign/
-
-# useful for development
-# disable_qr = False
-# http_max_retries = 1
-# http_retry_delay = 5
-
-# path = /path/to/save
-# device = your_device_name
-# # erase = basic
-# legacy = True
+http_max_retries = 1
+http_retry_delay = 5
