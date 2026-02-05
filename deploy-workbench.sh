@@ -328,6 +328,23 @@ END
 
         ${SUDO} chmod +x "${workbench_bin_path}"
 
+        inetcheck_bin_path="${ISO_PATH}/chroot/usr/local/bin/internet"
+        ${SUDO} tee "${inetcheck_bin_path}" <<END
+#!/bin/sh
+
+set -x
+
+main() {
+        ping -q -c 2 -W 4 8.8.8.8
+        ping -q -c 2 -W 4 ereuse.org
+        ip -br a | grep UP
+        ip route show default
+}
+
+main "\${@:-}"
+END
+        ${SUDO} chmod +x "${inetcheck_bin_path}"
+
         ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
 if [ -f /tmp/workbench_lock ]; then
         return 0
