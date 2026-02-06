@@ -290,6 +290,61 @@ prepare_app() {
 
         # startup script execution
         ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+
+        workbench_bin_path="${ISO_PATH}/chroot/usr/local/bin/wb"
+        ${SUDO} tee "${workbench_bin_path}" <<END
+#!/bin/sh
+
+# workbench-script
+#   source: https://github.com/eReuse/workbench-script
+
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -e
+set -u
+# DEBUG
+#set -x
+
+main() {
+        # detect pxe env
+        nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
+        if [ "\${nfs_host}" ]; then
+                mount --bind /run/live/medium /mnt
+                # debian live nfs path is readonly, do a trick
+                #   to make snapshots subdir readwrite
+                mount -v \${nfs_host}:/snapshots /run/live/medium/snapshots
+                # reload mounts on systemd
+                systemctl daemon-reload
+        fi
+        # clearly specify the right working directory, used in the python script as os.getcwd()
+        cd /mnt
+        #pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        # works meanwhile this project is vanilla python
+        python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+}
+
+main "\${@:-}"
+END
+
+        ${SUDO} chmod +x "${workbench_bin_path}"
+
+        inetcheck_bin_path="${ISO_PATH}/chroot/usr/local/bin/internet"
+        ${SUDO} tee "${inetcheck_bin_path}" <<END
+#!/bin/sh
+
+set -x
+
+main() {
+        ping -q -c 2 -W 4 8.8.8.8
+        ping -q -c 2 -W 4 ereuse.org
+        ip -br a | grep UP
+        ip route show default
+}
+
+main "\${@:-}"
+END
+        ${SUDO} chmod +x "${inetcheck_bin_path}"
+
         ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
 if [ -f /tmp/workbench_lock ]; then
         return 0
@@ -301,21 +356,7 @@ set -x
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 
-# detect pxe env
-nfs_host="\$(df -hT | grep nfs | cut -f1 -d: | head -n1)"
-if [ "\${nfs_host}" ]; then
-        mount --bind /run/live/medium /mnt
-        # debian live nfs path is readonly, do a trick
-        #   to make snapshots subdir readwrite
-        mount -v \${nfs_host}:/snapshots /run/live/medium/snapshots
-        # reload mounts on systemd
-        systemctl daemon-reload
-fi
-# clearly specify the right working directory, used in the python script as os.getcwd()
-cd /mnt
-#pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
-# works meanwhile this project is vanilla python
-python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+wb
 
 stty echo
 set +x
@@ -342,6 +383,8 @@ echo 'Install sanitize requirements'
 # Install sanitize debian requirements
 apt-get install -y --no-install-recommends \
   hdparm nvme-cli < /dev/null
+
+apt autoremove -y
 
 # TODO uncomment when we have dependencies again
 # pipenv run pip install -r /opt/workbench/requirements.txt
@@ -461,18 +504,10 @@ prepare_chroot_env() {
                         echo "ERROR: CUSTOM_LANG not supported. Available: es"
                         exit 1
         esac
-        # version of debian the bootstrap is going to build
-        #   if no VERSION_CODENAME is specified we assume that the bootstrap is going to
-        #   be build with the same version of debian being executed because some files
-        #   are copied from our root system
-        if [ -z "${VERSION_CODENAME:-}" ]; then
-                . /etc/os-release
-                echo "TAKING OS-RELEASE FILE"
-                if [ ! "${ID}" = "debian" ]; then
-                        echo "ERROR: ubuntu detected, then you are enforced to specify debian variant"
-                        echo "  use for example \`VERSION_CODENAME='bookworm'\` or similar"
-                        exit 1
-                fi
+
+        if ! grep -q ^ID=debian$ /etc/os-release; then
+                echo "ERROR: only debian is supported (you might try building the iso with our docker version)"
+                exit 1
         fi
 
         chroot_path="${ISO_PATH}/chroot"

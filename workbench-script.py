@@ -287,7 +287,7 @@ def save_snapshot_in_disk(snapshot, path, snap_uuid):
 
     filename = "{}/{}_{}.json".format(
         snapshot_path,
-        datetime.now().strftime("%Y%m%d-%H_%M_%S"),
+        datetime.now().strftime("%F_%H-%M-%S"),
         snap_uuid)
 
     try:
@@ -543,6 +543,10 @@ def main():
         snapshot['erase'] = gen_erase(all_disks, config['erase'], user_disk=config['device'])
     elif config['erase'] and not legacy:
         snapshot['erase'] = gen_erase(all_disks, config['erase'])
+
+    token = config.get("token")
+    if token:
+        snapshot["token_hash"] = hashlib.sha3_256(token.encode("utf8")).hexdigest()
 
     if legacy:
         convert_to_legacy_snapshot(snapshot)
