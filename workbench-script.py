@@ -544,6 +544,10 @@ def main():
     elif config['erase'] and not legacy:
         snapshot['erase'] = gen_erase(all_disks, config['erase'])
 
+    token = config.get("token")
+    if token:
+        snapshot["token_hash"] = hashlib.sha3_256(token.encode("utf8")).hexdigest()
+
     if legacy:
         convert_to_legacy_snapshot(snapshot)
         snapshot = json.dumps(snapshot)
