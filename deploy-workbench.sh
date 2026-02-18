@@ -210,6 +210,10 @@ create_persistence_partition() {
                 fi
                 ${SUDO} cp -v settings.ini "${tmp_rw_mount}/settings.ini"
 
+                ${SUDO} tee "${tmp_rw_mount}/.env" <<END
+server=1.2.3.4
+END
+
                 ${SUDO} umount "${tmp_rw_mount}"
 
                 uuid="$(blkid -s UUID -o value "${rw_img_path}")"
@@ -279,18 +283,46 @@ END2
 END
 )"
 
-prepare_app() {
-        # prepare app during prepare_chroot_env
-        workbench_dir="${ISO_PATH}/chroot/opt/workbench"
-        ${SUDO} mkdir -p "${workbench_dir}"
-        ${SUDO} cp workbench-script.py "${workbench_dir}/"
-        ${SUDO} cp -arp locale "${workbench_dir}/"
-        # TODO uncomment when we have dependencies again
-        #${SUDO} cp requirements.txt "${workbench_dir}/"
+prepare_app__glpiagent() {
+        glpiagent_bin_path="${ISO_PATH}/chroot/usr/local/bin/ga"
+        ${SUDO} tee "${glpiagent_bin_path}" <<END
+#!/bin/sh
 
-        # startup script execution
-        ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+# glpiagent-script
+#   source: https://github.com/eReuse/workbench-script
 
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+set -e
+set -u
+# DEBUG
+#set -x
+
+main() {
+       # get config
+       . /mnt/.env
+       # TODO refine / verify
+       glpi-agent --server "\${server}" --local=/tmp/ga-test.txt
+}
+
+main "\${@:-}"
+END
+
+        ${SUDO} chmod +x "${glpiagent_bin_path}"
+
+        # sequence of commands to install app in function run_chroot
+        install_app_str__glpi="$(cat<<END
+glpiagent=glpi-agent-1.16-linux-installer.pl
+url=https://github.com/glpi-project/glpi-agent/releases/download/1.16/glpi-agent-1.16-linux-installer.pl
+outfile=/tmp/\${glpiagent}
+curl -L "\${url}" -z "\${out_file}" -o "\${out_file}" -C -
+chmod +x /tmp/glpi-agent-1.16-linux-installer.pl
+./tmp/\${glpiagent}
+END
+)"
+}
+
+prepare_app__workbench() {
         workbench_bin_path="${ISO_PATH}/chroot/usr/local/bin/wb"
         ${SUDO} tee "${workbench_bin_path}" <<END
 #!/bin/sh
@@ -328,6 +360,47 @@ END
 
         ${SUDO} chmod +x "${workbench_bin_path}"
 
+        # sequence of commands to install app in function run_chroot
+        install_app_str__workbench="$(cat<<END
+echo 'Install requirements'
+
+# Install debian requirements
+# TODO converge more here with install-dependencies.sh
+apt-get install -y --no-install-recommends \
+  sudo locales keyboard-configuration console-setup qrencode \
+  python-is-python3 python3 python3-dev python3-pip pipenv \
+  dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi \
+  firmware-linux firmware-linux-nonfree firmware-realtek firmware-iwlwifi < /dev/null
+
+echo 'Install sanitize requirements'
+
+# Install sanitize debian requirements
+apt-get install -y --no-install-recommends \
+  hdparm nvme-cli < /dev/null
+
+apt autoremove -y
+
+# TODO uncomment when we have dependencies again
+# pipenv run pip install -r /opt/workbench/requirements.txt
+END
+)"
+}
+
+prepare_app() {
+        # prepare app during prepare_chroot_env
+        workbench_dir="${ISO_PATH}/chroot/opt/workbench"
+        ${SUDO} mkdir -p "${workbench_dir}"
+        ${SUDO} cp workbench-script.py "${workbench_dir}/"
+        ${SUDO} cp -arp locale "${workbench_dir}/"
+        # TODO uncomment when we have dependencies again
+        #${SUDO} cp requirements.txt "${workbench_dir}/"
+
+        # startup script execution
+        ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+
+        prepare_app__glpiagent
+        prepare_app__workbench
+
         inetcheck_bin_path="${ISO_PATH}/chroot/usr/local/bin/internet"
         ${SUDO} tee "${inetcheck_bin_path}" <<END
 #!/bin/sh
@@ -356,6 +429,7 @@ set -x
 stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 
+ga
 wb
 
 stty echo
@@ -365,31 +439,6 @@ END
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
 poweroff
 END
-
-        # sequence of commands to install app in function run_chroot
-        install_app_str="$(cat<<END
-echo 'Install requirements'
-
-# Install debian requirements
-# TODO converge more here with install-dependencies.sh
-apt-get install -y --no-install-recommends \
-  sudo locales keyboard-configuration console-setup qrencode \
-  python-is-python3 python3 python3-dev python3-pip pipenv \
-  dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi \
-  firmware-linux firmware-linux-nonfree firmware-realtek firmware-iwlwifi < /dev/null
-
-echo 'Install sanitize requirements'
-
-# Install sanitize debian requirements
-apt-get install -y --no-install-recommends \
-  hdparm nvme-cli < /dev/null
-
-apt autoremove -y
-
-# TODO uncomment when we have dependencies again
-# pipenv run pip install -r /opt/workbench/requirements.txt
-END
-)"
 }
 
 run_chroot() {
@@ -429,7 +478,8 @@ apt-get install -y --no-install-recommends \
   systemd-sysv
 
 # Install app
-${install_app_str}
+${install_app_str__glpi}
+${install_app_str__workbench}
 
 # thanks src https://serverfault.com/questions/362903/how-do-you-set-a-locale-non-interactively-on-debian-ubuntu
 export LANG=${LANG}
