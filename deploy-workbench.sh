@@ -505,7 +505,9 @@ prepare_chroot_env() {
                         exit 1
         esac
 
-        if ! grep -q ^ID=debian$ /etc/os-release; then
+        # for now, we use the VERSION_CODENAME of your installer system
+        . /etc/os-release
+        if [ ! "${ID}" = "debian" ]; then
                 echo "ERROR: only debian is supported (you might try building the iso with our docker version)"
                 exit 1
         fi
