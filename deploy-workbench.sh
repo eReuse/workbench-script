@@ -312,10 +312,14 @@ END
 
         # sequence of commands to install app in function run_chroot
         install_app_str__glpi="$(cat<<END
+apt-get install -y --no-install-recommends \
+  curl < /dev/null
+
 glpiagent=glpi-agent-1.16-linux-installer.pl
 url=https://github.com/glpi-project/glpi-agent/releases/download/1.16/glpi-agent-1.16-linux-installer.pl
-outfile=/tmp/\${glpiagent}
-curl -L "\${url}" -z "\${out_file}" -o "\${out_file}" -C -
+out_file=/tmp/\${glpiagent}
+# TODO fallo certificado https
+curl -k -L "\${url}" -z "\${out_file}" -o "\${out_file}" -C -
 chmod +x /tmp/glpi-agent-1.16-linux-installer.pl
 ./tmp/\${glpiagent}
 END
