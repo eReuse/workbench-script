@@ -299,10 +299,12 @@ set -u
 #set -x
 
 main() {
-       # get config
+       # get server config
        . /mnt/.env
-       # TODO refine / verify
-       glpi-agent --server "\${server}" --local=/tmp/ga-test.txt
+       ts="\$(date +'%F_%H-%M-S')"
+       ga_dir="/mnt/ga-snapshots"
+       mkdir -p "\${ga_dir}"
+       glpi-agent --server "\${server}" --local=\${ga_dir}/glpi-agent_\${ts}.xml
 }
 
 main "\${@:-}"
