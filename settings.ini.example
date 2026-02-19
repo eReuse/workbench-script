@@ -1,5 +1,5 @@
 [settings]
 url = https://demo.ereuse.org/api/v1/snapshot/
 token = 5018dd65-9abd-4a62-8896-80f34ac66150
-http_max_retries = 1
+http_max_retries = 5
 http_retry_delay = 5

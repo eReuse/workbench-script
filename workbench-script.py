@@ -449,7 +449,7 @@ def load_config(config_file="settings.ini"):
         'url_wallet': None,
         'wb_sign_token': None,
         'disable_qr': None,
-        'http_max_retries': 1,
+        'http_max_retries': 5,
         'http_retry_delay': 5
     }
 
