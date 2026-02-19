@@ -438,44 +438,48 @@ def load_config(config_file="settings.ini"):
     """
     Tries to load configuration from a config file.
     """
-    config = configparser.ConfigParser()
-
-    if os.path.exists(config_file):
-        # If config file exists, read from it
-
-        logger.info(_("Found config file in path: %s."), config_file)
-        config.read(config_file)
-        path = config.get('settings', 'path', fallback=os.getcwd())
-        # TODO validate that has http:// start
-        url = config.get('settings', 'url', fallback=None)
-        token = config.get('settings', 'token', fallback=None)
-        # TODO validate that the device exists?
-        device = config.get('settings', 'device', fallback=None)
-        erase = config.get('settings', 'erase', fallback=None)
-        legacy = config.get('settings', 'legacy', fallback=None)
-        url_wallet = config.get('settings', 'url_wallet', fallback=None)
-        wb_sign_token = config.get('settings', 'wb_sign_token', fallback=None)
-        disable_qr = config.get('settings', 'disable_qr', fallback=None)
-        http_max_retries = int(config.get('settings', 'http_max_retries', fallback=1))
-        http_retry_delay = int(config.get('settings', 'http_retry_delay', fallback=5))
-    else:
-        logger.error(_("Config file '%s' not found. Using default values."), config_file)
-        path = os.path.join(os.getcwd())
-        url, token, device, erase, legacy, url_wallet, wb_sign_token, disable_qr = (None,)*8
-
-    return {
-        'path': path,
-        'url': url,
-        'token': token,
-        'device': device,
-        'erase': erase,
-        'legacy': legacy,
-        'wb_sign_token': wb_sign_token,
-        'url_wallet': url_wallet,
-        'disable_qr': disable_qr,
-        'http_max_retries': http_max_retries,
-        'http_retry_delay': http_retry_delay
+    # Define all keys and their default values in one place
+    defaults = {
+        'path': os.getcwd(),
+        'url': None,
+        'token': None,
+        'device': None,
+        'erase': None,
+        'legacy': None,
+        'url_wallet': None,
+        'wb_sign_token': None,
+        'disable_qr': None,
+        'http_max_retries': 1,
+        'http_retry_delay': 5
     }
+
+    if not os.path.exists(config_file):
+        logger.error(_("Config file '%s' not found. Using default values."), config_file)
+        return defaults
+
+    logger.info(_("Found config file in path: %s."), config_file)
+
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    result = {}
+
+    # Iterate through defaults to extract values dynamically
+    for key, default_val in defaults.items():
+        if config.has_option('settings', key):
+            # Auto-cast to int if the default value is an integer
+            if isinstance(default_val, int):
+                result[key] = config.getint('settings', key)
+            else:
+                result[key] = config.get('settings', key)
+        else:
+            result[key] = default_val
+
+    # Validate URL
+    if result.get('url') and not result['url'].startswith(('http://', 'https://')):
+        logger.warning(_("Configured URL does not start with http:// or https://"))
+
+    return result
 
 def parse_args():
     """
