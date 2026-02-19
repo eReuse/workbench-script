@@ -477,7 +477,8 @@ def load_config(config_file="settings.ini"):
 
     # Validate URL
     if result.get('url') and not result['url'].startswith(('http://', 'https://')):
-        logger.warning(_("Configured URL does not start with http:// or https://"))
+        logger.error(_("Configured URL does not start with http:// or https://"))
+        exit(1)
 
     return result
 
