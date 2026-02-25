@@ -79,6 +79,23 @@ Existen dos métodos para generar la ISO:
 
 Este método es el más sencillo y compatible con cualquier sistema operativo (incluyendo Windows, macOS y otras distribuciones de GNU/Linux o BSD). Solo necesitas tener Docker instalado en tu máquina.
 
+Esta es la forma que recomendamos para instalar docker:
+
+```sh
+apt install curl -y
+apt install apt-utils -y
+# src https://docs.docker.com/engine/install/debian/#install-using-the-convenience-script
+curl -fsSL https://get.docker.com -o get-docker.sh
+cat > install-docker.sh <<END
+set -e
+set -u
+set -x
+END
+DRY_RUN=1 sh ./get-docker.sh >> install-docker.sh
+chmod +x install-docker.sh
+./install-docker.sh
+```
+
 > [!NOTE]
 > Se ha detectado que `deploy-workbench.sh` no funciona correctamente en distribuciones basadas en Ubuntu 24.04.
 
