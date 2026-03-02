@@ -258,9 +258,9 @@ def smartctl(all_disks, disk=None):
 
     data_list = []
     for disk in all_disks:
-        if disk['type'] == 'disk':
-            data = exec_smart(disk['name'])
-            data_list.append(data)
+        #if disk['type'] == 'disk':
+        data = exec_smart(disk['name'])
+        data_list.append(data)
 
     return json.dumps(data_list)
 
