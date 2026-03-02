@@ -536,7 +536,8 @@ def main():
     # Load the config file, either specified via --config or the default 'settings.ini'
     config_file = args.config
 
-    global config = load_config(config_file)
+    global config
+    config = load_config(config_file)
     legacy = config.get("legacy")
 
     # Cross-platform check
