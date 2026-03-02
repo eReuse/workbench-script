@@ -457,8 +457,8 @@ def load_config(config_file="settings.ini"):
         'disable_qr': None,
         'http_max_retries': 5,
         'http_retry_delay': 5,
-        'dmidecode_path': None
-        'smartctl_path': None
+        'dmidecode_path': None,
+        'smartctl_path': None,
     }
 
     if not os.path.exists(config_file):
