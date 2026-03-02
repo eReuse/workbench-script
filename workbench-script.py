@@ -20,6 +20,8 @@ import logging
 from datetime import datetime
 import time
 
+# config as global var
+config = None
 
 SNAPSHOT_BASE = {
     'timestamp': str(datetime.now()),
@@ -264,7 +266,8 @@ def smartctl(all_disks, disk=None):
 # TODO permitir selección
 # TODO permitir que vaya más rápido
 def get_data(all_disks):
-    dmidecode = 'sudo dmidecode'
+    #dmidecode = 'sudo dmidecode'
+    dmidecode = config.dmidecode_path
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
 
     data = {
@@ -450,7 +453,8 @@ def load_config(config_file="settings.ini"):
         'wb_sign_token': None,
         'disable_qr': None,
         'http_max_retries': 5,
-        'http_retry_delay': 5
+        'http_retry_delay': 5,
+        'dmidecode_path': None
     }
 
     if not os.path.exists(config_file):
