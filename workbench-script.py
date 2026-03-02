@@ -201,7 +201,8 @@ def nvme_secure_erase(disk):
 @logs
 def get_disks():
     disks = json.loads(
-        exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
+        #exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
+        exec_cmd(config.get('smartctl_path') + ' --scan -j')
     )
     return disks.get('blockdevices', [])
 
@@ -242,7 +243,9 @@ def gen_erase(all_disks, type_erase, user_disk=None):
 
 @logs
 def exec_smart(disk):
-    cmd = f'sudo smartctl -x --json=cosviu /dev/{disk}'
+    #cmd = f'sudo smartctl -x --json=cosviu /dev/{disk}'
+    cmd = config.get('smartctl_path') + f' -x --json=cosviu /dev/{disk}'
+
     return json.loads(exec_cmd(cmd))
 
 
@@ -455,6 +458,7 @@ def load_config(config_file="settings.ini"):
         'http_max_retries': 5,
         'http_retry_delay': 5,
         'dmidecode_path': None
+        'smartctl_path': None
     }
 
     if not os.path.exists(config_file):
