@@ -535,10 +535,24 @@ def main():
     config = load_config(config_file)
     legacy = config.get("legacy")
 
-    # TODO show warning if non root, means data is not complete
-    #   if annotate as potentially invalid snapshot (pending the new API to be done)
-    if os.geteuid() != 0:
-        logger.warning(_("This script must be run as root. Collected data will be incomplete or unusable"))
+    # Cross-platform check
+    is_admin = False
+    try:
+        if os.name == 'nt':
+            # Check if running as Admin on Windows
+            import ctypes
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+        else:
+            # Check if running as Root on Linux/macOS
+            is_admin = os.geteuid() == 0
+    except AttributeError:
+        # Fallback if checks fail
+        is_admin = False
+
+    if not is_admin:
+        # TODO show warning if non root, means data is not complete
+        #   if annotate as potentially invalid snapshot (pending the new API to be done)
+        logger.warning("This script should be run with elevated privileges (Admin/Root). Collected data might be incomplete or unusable.")
 
     all_disks = get_disks()
     snapshot = gen_snapshot(all_disks)
