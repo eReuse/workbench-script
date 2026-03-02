@@ -204,7 +204,8 @@ def get_disks():
         #exec_cmd('lsblk -Jdo NAME,TYPE,MOUNTPOINTS,ROTA,TRAN')
         exec_cmd(config.get('smartctl_path') + ' --scan -j')
     )
-    return disks.get('blockdevices', [])
+    #return disks.get('blockdevices', [])
+    return disks.get('devices', [])
 
 @logs
 def gen_erase(all_disks, type_erase, user_disk=None):
