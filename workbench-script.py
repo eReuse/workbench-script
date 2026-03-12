@@ -273,7 +273,7 @@ def get_data(all_disks):
     #dmidecode = 'sudo dmidecode'
     dmidecode = config.get('dmidecode_path')
     inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
-    get_netadapter = 'Get-NetAdapter | ConvertTo-Json'
+    get_netadapter = 'powershell -NoProfile -Command "Get-NetAdapter | ConvertTo-Json"'
 
     data = {
         'smartctl': smartctl(all_disks),
