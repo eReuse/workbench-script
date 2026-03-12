@@ -85,13 +85,13 @@ LABEL linux
   MENU LABEL workbench
   MENU DEFAULT
   KERNEL /live/vmlinuz
-  APPEND initrd=/live/initrd boot=live net.ifnames=0 biosdevname=0 persistence
+  APPEND initrd=/live/initrd boot=live net.ifnames=0 biosdevname=0 persistence pcie_aspm=off
 
 LABEL linux
   MENU LABEL workbench (nomodeset)
   MENU DEFAULT
   KERNEL /live/vmlinuz
-  APPEND initrd=/live/initrd boot=live net.ifnames=0 biosdevname=0 persistence nomodeset
+  APPEND initrd=/live/initrd boot=live net.ifnames=0 biosdevname=0 persistence nomodeset pcie_aspm=off
 END
 )"
         #   TIMEOUT 60 means 6 seconds :)
@@ -112,12 +112,12 @@ set timeout=1
 # If X has issues finding screens, experiment with/without nomodeset.
 
 menuentry "workbench" {
-    linux (\$root)/live/vmlinuz boot=live net.ifnames=0 biosdevname=0 persistence
+    linux (\$root)/live/vmlinuz boot=live net.ifnames=0 biosdevname=0 persistence pcie_aspm=off
     initrd (\$root)/live/initrd
 }
 
 menuentry "workbench (nomodeset)" {
-    linux (\$root)/live/vmlinuz boot=live net.ifnames=0 biosdevname=0 persistence nomodeset
+    linux (\$root)/live/vmlinuz boot=live net.ifnames=0 biosdevname=0 persistence nomodeset pcie_aspm=off
     initrd (\$root)/live/initrd
 }
 END
