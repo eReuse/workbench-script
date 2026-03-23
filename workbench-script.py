@@ -445,7 +445,7 @@ def load_config(config_file="settings.ini"):
         'token': None,
         'device': None,
         'erase': None,
-        'legacy': None,
+        'legacy': False,
         'url_wallet': None,
         'wb_sign_token': None,
         'disable_qr': None,
@@ -468,7 +468,9 @@ def load_config(config_file="settings.ini"):
     for key, default_val in defaults.items():
         if config.has_option('settings', key):
             # Auto-cast to int if the default value is an integer
-            if isinstance(default_val, int):
+            if isinstance(default_val, bool):
+                result[key] = config.getboolean('settings', key)
+            elif isinstance(default_val, int):
                 result[key] = config.getint('settings', key)
             else:
                 result[key] = config.get('settings', key)
