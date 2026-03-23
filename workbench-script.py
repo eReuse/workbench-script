@@ -448,7 +448,7 @@ def load_config(config_file="settings.ini"):
         'legacy': False,
         'url_wallet': None,
         'wb_sign_token': None,
-        'disable_qr': None,
+        'disable_qr': False,
         'http_max_retries': 5,
         'http_retry_delay': 5
     }
