@@ -246,8 +246,7 @@ collect_wifi() {
         iw_output=$(iwinfo "$iface" info 2>/dev/null)
         echo "$iw_output" | grep -q 'ESSID:' || continue
 
-        local ssid mode channel freq hwmode txpower
-        ssid=$(echo "$iw_output" | grep 'ESSID:' | sed 's/.*ESSID: *"\(.*\)"/\1/')
+        local mode channel freq hwmode txpower
         mode=$(echo "$iw_output" | grep 'Mode:' | sed 's/.*Mode: *\([A-Za-z]*\( [A-Za-z]*\)\?\)  .*/\1/')
         channel=$(echo "$iw_output" | grep 'Channel:' | sed 's/.*Channel: *\([0-9]*\).*/\1/')
         freq=$(echo "$iw_output" | grep 'Channel:' | sed 's/.*(\([0-9.]*\) GHz).*/\1/')
@@ -258,7 +257,7 @@ collect_wifi() {
         hw_name=$(echo "$iw_output" | grep 'Hardware:' | sed 's/.*\[\(.*\)\]/\1/')
 
         [ "$first" -eq 1 ] && first=0 || wifi_ifaces_json="${wifi_ifaces_json},"
-        wifi_ifaces_json="${wifi_ifaces_json}{\"interface\":\"${iface}\",\"ssid\":\"$(json_escape "$ssid")\",\"mode\":\"${mode}\",\"channel\":${channel:-0},\"frequency_ghz\":\"${freq}\",\"hw_modes\":\"$(json_escape "$hwmode")\",\"tx_power_dbm\":${txpower:-0},\"hardware\":\"$(json_escape "$hw_name")\"}"
+        wifi_ifaces_json="${wifi_ifaces_json}{\"interface\":\"${iface}\",\"mode\":\"${mode}\",\"channel\":${channel:-0},\"frequency_ghz\":\"${freq}\",\"hw_modes\":\"$(json_escape "$hwmode")\",\"tx_power_dbm\":${txpower:-0},\"hardware\":\"$(json_escape "$hw_name")\"}"
     done
 
     # Connected clients
