@@ -319,8 +319,15 @@ main() {
         # clearly specify the right working directory, used in the python script as os.getcwd()
         cd /mnt
         #pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+
         # works meanwhile this project is vanilla python
-        python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        # override workbench script
+        if [ -f ./workbench-script.py ]; then
+            python ./workbench-script.py --config /mnt/settings.ini
+        else
+            python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        fi
+
 }
 
 main "\${@:-}"
