@@ -353,6 +353,14 @@ END
         ${SUDO} chmod +x "${inetcheck_bin_path}"
 
         ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
+handle_exit() {
+              stty echo
+              set +x
+}
+
+# src https://unix.stackexchange.com/questions/520035/exit-trap-with-posix
+trap 'handle_exit' EXIT INT HUP
+
 if [ -f /tmp/workbench_lock ]; then
         return 0
 else
