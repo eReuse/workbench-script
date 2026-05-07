@@ -5,6 +5,7 @@
 
 import signal
 import sys
+import subprocess
 import os
 import socket
 import json
@@ -51,14 +52,15 @@ def logs(f):
 @logs
 def exec_cmd(cmd):
     logger.info(_('Running command `%s`'), cmd)
-    return os.popen(cmd).read()
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+    return result.stdout
 
 
 @logs
 def exec_cmd_erase(cmd):
     logger.info(_('Running command `%s`'), cmd)
     return ''
-    # return os.popen(cmd).read()
+    # return subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
 
 ## End Utility functions ##
 
