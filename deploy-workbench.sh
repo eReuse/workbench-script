@@ -319,8 +319,15 @@ main() {
         # clearly specify the right working directory, used in the python script as os.getcwd()
         cd /mnt
         #pipenv run python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+
         # works meanwhile this project is vanilla python
-        python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        # override workbench script
+        if [ -f ./workbench-script.py ]; then
+            python ./workbench-script.py --config /mnt/settings.ini
+        else
+            python /opt/workbench/workbench-script.py --config /mnt/settings.ini
+        fi
+
 }
 
 main "\${@:-}"
@@ -346,6 +353,14 @@ END
         ${SUDO} chmod +x "${inetcheck_bin_path}"
 
         ${SUDO} tee "${ISO_PATH}/chroot/root/.profile" <<END
+handle_exit() {
+              stty echo
+              set +x
+}
+
+# src https://unix.stackexchange.com/questions/520035/exit-trap-with-posix
+trap 'handle_exit' EXIT INT HUP
+
 if [ -f /tmp/workbench_lock ]; then
         return 0
 else
