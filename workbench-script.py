@@ -3,6 +3,8 @@
 # Copyright (c) 2024 pangea.org Associació Pangea - Coordinadora Comunicació per a la Cooperació
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+import signal
+import sys
 import os
 import json
 import uuid
@@ -589,4 +591,5 @@ def main():
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
     main()
