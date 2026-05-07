@@ -230,14 +230,14 @@ END
 
 chroot_netdns_conf_str="$(cat<<END
 ###################
-# configure network
-mkdir -p /etc/network/
-cat > /etc/network/interfaces <<END2
-auto lo
-iface lo inet loopback
+# configure network-manager
+cat > /etc/NetworkManager/NetworkManager.conf <<END2
+[main]
+plugins=ifupdown,keyfile
+dns=dnsmasq
 
-auto eth0
-iface eth0 inet dhcp
+[ifupdown]
+managed=true
 END2
 
 ###################
@@ -363,8 +363,6 @@ trap 'handle_exit' EXIT INT HUP
 
 if [ -f /tmp/workbench_lock ]; then
         return 0
-else
-        touch /tmp/workbench_lock
 fi
 
 set -x
@@ -372,6 +370,7 @@ stty -echo # Do not show what we type in terminal so it does not meddle with our
 dmesg -n 1 # Do not report *useless* system messages to the terminal
 
 wb
+touch /tmp/workbench_lock
 
 stty echo
 set +x
@@ -391,7 +390,8 @@ apt-get install -y --no-install-recommends \
   sudo locales keyboard-configuration console-setup qrencode \
   python-is-python3 python3 python3-dev python3-pip pipenv \
   dmidecode smartmontools hwinfo pciutils lshw nfs-common inxi \
-  firmware-linux firmware-linux-nonfree firmware-realtek firmware-iwlwifi < /dev/null
+  firmware-linux firmware-linux-nonfree firmware-realtek firmware-iwlwifi \
+  network-manager chrony wpasupplicant < /dev/null
 
 echo 'Install sanitize requirements'
 
