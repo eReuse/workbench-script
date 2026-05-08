@@ -267,7 +267,7 @@ def smartctl(all_disks, disk=None):
 # TODO permitir que vaya más rápido
 def get_data(all_disks):
     dmidecode = 'sudo dmidecode'
-    inxi = "sudo inxi -afmnGEMABD -x 3 --edid --output json --output-file print"
+    inxi = "sudo inxi --tty -Z -afmnGEMABD -x 3 --edid --output json --output-file print"
 
     data = {
         'smartctl': smartctl(all_disks),
