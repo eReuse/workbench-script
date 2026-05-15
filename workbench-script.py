@@ -469,8 +469,12 @@ def load_config(config_file="settings.ini"):
     config = configparser.ConfigParser()
     config.read(config_file)
 
-    result = {}
+    # Strip surrounding quotes from all raw values in config
+    if config.has_section('settings'):
+        for key in config['settings']:
+            config['settings'][key] = config['settings'][key].strip().strip('"').strip("'")
 
+    result = {}
     # Iterate through defaults to extract values dynamically
     for key, default_val in defaults.items():
         if config.has_option('settings', key):
