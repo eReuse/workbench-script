@@ -128,6 +128,9 @@ EOF
 
         ${SUDO} tee "${ISO_PATH}/tmp/grub-standalone.cfg" <<EOF
 search --set=root --file /${iso_name}
+if [ -z "\$root" ]; then
+    search --set=root --label "${iso_name}"
+fi
 set prefix=(\$root)/boot/grub/
 configfile /boot/grub/grub.cfg
 EOF
