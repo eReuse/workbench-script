@@ -368,13 +368,16 @@ else
 fi
 
 set -x
-stty -echo # Do not show what we type in terminal so it does not meddle with our nice output
-dmesg -n 1 # Do not report *useless* system messages to the terminal
+# Do not show what we type in terminal so it does not meddle with our nice output
+stty -echo
+# Do not report *useless* system messages to the terminal
+dmesg -n 1
 
 wb
 
-stty echo
-set +x
+cat /etc/workbench-version
+
+handle_exit
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
@@ -414,7 +417,8 @@ run_chroot() {
 set -x
 set -e
 
-echo workbench > /etc/hostname
+echo "${hostname}" > /etc/hostname
+echo "${workbench_version}" > /etc/workbench-version
 
 # check what linux images are available on the system
 # Figure out which Linux Kernel you want in the live environment.
@@ -585,6 +589,7 @@ main() {
         iso_name="workbench_${VERSION_ISO}"
         hostname='workbench'
         root_passwd='workbench'
+        workbench_version="$(git log --format="%H %ad" --date=iso -n 1)"
 
         eval "${detect_user_str}" && detect_user
 

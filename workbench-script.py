@@ -332,7 +332,6 @@ def http_post(url, data, headers, redirect_depth=0):
                 new_url = urllib.parse.urljoin(url, new_location)
                 logger.info(_("Redirect %s detected. Retrying POST to: %s"), e.code, new_url)
                 return http_post(new_url, data, headers, redirect_depth + 1)
-    except urllib.error.HTTPError as e:
         status_code = e.code
         response_text = e.read().decode('utf-8')
         logger.error("HTTPError %s: %s", status_code, response_text)
