@@ -373,9 +373,9 @@ dmesg -n 1 # Do not report *useless* system messages to the terminal
 
 wb
 
-stty echo
-set +x
 cat /etc/workbench-version
+
+handle_exit
 END
         #TODO add some useful commands
         cat > "${ISO_PATH}/chroot/root/.bash_history" <<END
