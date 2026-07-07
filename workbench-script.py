@@ -403,21 +403,21 @@ def send_snapshot_to_devicehub(snapshot, token, url, ev_uuid, legacy, disable_qr
 
             if 200 <= status_code < 300:
                 logger.info(_("Snapshot successfully sent to '%s'"), url)
-                if legacy:
-                    try:
-                        response = json.loads(response_text)
-                        public_url = response.get('public_url')
-                        dhid = response.get('dhid')
+                try:
+                    response = json.loads(response_text)
+                    public_url = response.get('public_url')
+                    dhid = response.get('dhid')
+                    if legacy:
                         if public_url:
                             generate_qr_code(public_url, disable_qr)
                             print("url: {}".format(public_url))
-                        if dhid:
-                            print("dhid: {}".format(dhid))
-                    except Exception:
-                        logger.error(response_text)
-                else:
-                    generate_qr_code(ev_url, disable_qr)
-                    print("url: {}".format(ev_url))
+                    else:
+                        generate_qr_code(ev_url, disable_qr)
+                        print("url: {}".format(ev_url))
+                    if dhid:
+                        print("dhid: {}".format(dhid))
+                except Exception:
+                    logger.error(response_text)
                 return
             else:
                 logger.error(
