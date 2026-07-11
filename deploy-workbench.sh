@@ -127,9 +127,15 @@ ${grubcfg_str}
 EOF
 
         ${SUDO} tee "${ISO_PATH}/tmp/grub-standalone.cfg" <<EOF
-search --set=root --file /${iso_name}
-if [ -z "\$root" ]; then
-    search --set=root --label "${iso_name}"
+search --set=found --file /${iso_name}
+if [ -n "\$found" ]; then
+    set root="\$found"
+else
+    # Some UEFI firmwares expose the iso9660 only as the raw whole-disk device, which 'search' misses.
+    # Fall back to the disk we were booted from, extracted from cmdpath
+    # src https://superuser.com/questions/1757526/get-device-part-of-a-file-path-within-grub-cfg
+    regexp -s drive '(hd[0-9]+)' "\$cmdpath"
+    set root="\$drive"
 fi
 set prefix=(\$root)/boot/grub/
 configfile /boot/grub/grub.cfg
