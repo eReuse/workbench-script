@@ -71,7 +71,7 @@ msgid ""
 "    %s"
 msgstr ""
 "Credencial no firmada remotamente por IdHub URL '%s'. Tienes internet? Está "
-"el servidor en marcha? Está autorizado el url token?\n"
+"el servicio operativo? Está autorizado el url token?\n"
 "    %s"
 
 #: workbench-script.py:404
@@ -93,7 +93,7 @@ msgid ""
 "    %s"
 msgstr ""
 "Snapshot no enviado remotamente a la URL '%s'. Tienes internet? Está el "
-"servidor en marcha? Está autorizado el url token?\n"
+"servicio operativo? Está autorizado el url token?\n"
 "    %s"
 
 #: workbench-script.py:430
