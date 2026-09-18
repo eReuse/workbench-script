@@ -42,6 +42,7 @@ main() {
 
         # workbench-script client dependencies
         client_deps='smartmontools
+                     git
                      lshw
                      hwinfo
                      dmidecode

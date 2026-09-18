@@ -290,6 +290,7 @@ prepare_app() {
 
         # startup script execution
         ${SUDO} mkdir -p "${ISO_PATH}/chroot/root/"
+        ${SUDO} mkdir -p "${ISO_PATH}/chroot/usr/local/bin"
 
         workbench_bin_path="${ISO_PATH}/chroot/usr/local/bin/wb"
         ${SUDO} tee "${workbench_bin_path}" <<END
