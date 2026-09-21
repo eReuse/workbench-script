@@ -359,10 +359,13 @@ END
 handle_exit() {
               stty echo
               set +x
+              cat /etc/workbench-version
 }
 
 # src https://unix.stackexchange.com/questions/520035/exit-trap-with-posix
 trap 'handle_exit' EXIT INT HUP
+
+cat /etc/workbench-version
 
 if [ -f /tmp/workbench_lock ]; then
         return 0
