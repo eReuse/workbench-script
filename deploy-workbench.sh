@@ -598,7 +598,7 @@ main() {
         iso_name="workbench_${VERSION_ISO}"
         hostname='workbench'
         root_passwd='workbench'
-        workbench_version="$(git --git-dir=./.git log --format="%H %ad" --date=iso -n 1)"
+        workbench_version="$(git --git-dir=./.git log --format="%h | %s | %ad" --date=iso -n 1)"
 
         eval "${detect_user_str}" && detect_user
 
