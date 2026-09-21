@@ -567,6 +567,12 @@ detect_user() {
                 echo "ERROR: this script needs root or sudo permissions (current user is not part of sudo group)"
                 exit 1
                 # detect user with sudo or already on sudo src https://serverfault.com/questions/568627/can-a-program-tell-it-is-being-run-under-sudo/568628#568628
+        elif [ -f /.dockerenv ] ; then
+                # inside a docker container: uid is 0 but the working
+                # dir is a mapped local dir (then use relative paths),
+                SUDO=''
+                cd "\$(dirname "\${0}")"
+                ISO_PATH="iso"
         elif [ ! "\${userid}" = 0 ] || [ -n "\${SUDO_USER:-}" ]; then
                 SUDO='sudo'
                 # jump to current dir where the script is so relative links work
