@@ -146,17 +146,19 @@ EOF
   #   grubx64 looks for a file in /EFI/debian/grub.cfg -> src src https://unix.stackexchange.com/questions/648089/uefi-grub-not-finding-config-file
         ${SUDO} cp /usr/lib/shim/shimx64.efi.signed /tmp/bootx64.efi
         ${SUDO} cp /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed /tmp/grubx64.efi
-        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" "${ISO_PATH}/staging/EFI/debian/grub.cfg"
+        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" /tmp/grub.cfg
 
         (
                 cd "${ISO_PATH}/staging/EFI/boot"
                 ${SUDO} dd if=/dev/zero of=efiboot.img bs=1M count=20
                 ${SUDO} mkfs.vfat efiboot.img
-                ${SUDO} mmd -i efiboot.img efi efi/boot
+                ${SUDO} mmd -i efiboot.img efi efi/boot efi/debian
                 ${SUDO} mcopy -vi efiboot.img \
                         /tmp/bootx64.efi \
                         /tmp/grubx64.efi \
+                        /tmp/grub.cfg \
                         ::efi/boot/
+                ${SUDO} mcopy -vi efiboot.img /tmp/grub.cfg ::efi/debian/grub.cfg
         )
 }
 
