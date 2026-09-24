@@ -3,6 +3,8 @@ services:
     init: true
     build: .
     privileged: true
+    # needed to address receiving UDP requests
+    network_mode: host
     volumes:
       - .:/opt/workbench-script/pxe:rw
       # ISO access
