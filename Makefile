@@ -56,7 +56,7 @@ boot_iso_uefi_secureboot:
 # when you change something, you need to refresh it this way
 regenerate_pxe_install:
 	./deploy-workbench.sh
-	pxe/install-pxe.sh
+	pxe/pxe-reset.sh
 
 es_gen:
 	$(MAKE) es_gen_po

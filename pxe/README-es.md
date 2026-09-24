@@ -7,7 +7,7 @@ Permite arrancar workbench a través de la red en vez de por USB. Utiliza la mis
 Ejecuta el siguiente script en un servidor debian estable que estará dedicado a la gestión del pxe server
 
 ```
-./install-pxe.sh
+./pxe-reset.sh
 ```
 
 Este servidor aporta un servicio de arranque por red tipo PXE, y no hace colisión con un servidor DHCP existente.
@@ -32,7 +32,7 @@ Red y host 10.0.2.2? Esta es la forma en que el programa *qemu* hace red en loca
 Desplegar servidores TFTP y NFS en el mismo ordenador, para permitir nfs inseguro:
 
 ```
-DEBUG=true ./install-pxe.sh
+DEBUG=true ./pxe-reset.sh
 ```
 
 Los directorios inseguros contienen configuración y snapshots de workbench, nada importante supongo. Aún así, `DEBUG=true` no se recomienda para un entorno de producción para evitar sorpresas.

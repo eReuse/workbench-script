@@ -5,4 +5,13 @@ test_pxe:
 # TODO not very convinced on having this, but ok right now
 .PHONY: install_pxe_debug
 install_pxe_debug:
-	DEBUG=true ./install-pxe.sh
+	DEBUG=true ./pxe-reset.sh
+
+# Test locally the TFTP files generated
+#  (obviously, this cannot work with NFS)
+test_pxe_tftp:
+	sudo qemu-system-x86_64 \
+		-enable-kvm -m 2G -vga qxl \
+		-netdev user,id=lan,tftp=./docker-data/pxe-tftp/,bootfile=pxelinux.0 \
+		-device virtio-net,netdev=lan,id=nic1 \
+		-boot n

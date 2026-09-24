@@ -1,0 +1,12 @@
+services:
+  pxe-server:
+    init: true
+    build: .
+    privileged: true
+    volumes:
+      - .:/opt/workbench-script/pxe:rw
+      # ISO access
+      - ../iso/staging:/opt/workbench-script/iso/staging:ro
+      # tftp server data for pxe-nfs and pxe-tftp
+      - ./docker-data:/srv
+      - ./docker-data/pxe-nfs/snapshots:/snapshots

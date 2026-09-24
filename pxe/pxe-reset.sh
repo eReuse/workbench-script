@@ -15,7 +15,7 @@ detect_user() {
                 echo "ERROR: this script needs root or sudo permissions (current user is not part of sudo group)"
                 exit 1
                 # detect user with sudo or already on sudo src https://serverfault.com/questions/568627/can-a-program-tell-it-is-being-run-under-sudo/568628#568628
-        elif [ ! "${userid}" = 0 ] || [ -n "${SUDO_USER}" ]; then
+        elif [ ! "${userid}" = 0 ] || [ -n "${SUDO_USER:-}" ]; then
                 SUDO='sudo'
                 # working directory to build the iso
                 ISO_PATH="iso"
@@ -24,11 +24,6 @@ detect_user() {
                 SUDO=''
                 ISO_PATH="/opt/workbench"
         fi
-}
-
-install_dependencies() {
-        ${SUDO} apt update
-        ${SUDO} apt install -y wget dnsmasq nfs-kernel-server rsync syslinux
 }
 
 backup_file() {
@@ -129,7 +124,7 @@ init_config() {
         cd "$(dirname "${0}")"
 
         # this is what we put in the files we modity
-        script_header='# configuration done through workbench install-pxe script'
+        script_header='# configuration done through workbench pxe-reset script'
 
         PXE_DIR="$(pwd)"
 
@@ -145,14 +140,52 @@ init_config() {
         export nfs_path="${nfs_path:-/srv/pxe-nfs}"
 }
 
+# TODO reduce comments?
+docker_prepare_nfsd() {
+        # kernel nfsd interface, needed before exportfs can work
+        # (requires privileged: true and `modprobe nfsd` on the host)
+        if ! grep -q ' /proc/fs/nfsd ' /proc/mounts; then
+                mount -t nfsd nfsd /proc/fs/nfsd
+        fi
+        # stale state from a previous run of the same container
+        rm -f /run/rpcbind/*.lock /run/rpcbind.lock
+        rpcbind
+}
+
+docker_run_pxe_service() {
+        # nfs: exports were written by install_nfs
+        exportfs -ra
+        rpc.nfsd 8
+        rpc.mountd
+        echo "PXE: NFS started"
+
+        # dnsmasq in the foreground keeps the container alive;
+        # load only our config file, logs to docker logs
+        exec dnsmasq \
+                --keep-in-foreground \
+                --conf-file=/etc/dnsmasq.d/pxe-tftp \
+                --log-facility=- \
+                --log-dhcp
+}
+
 main() {
         detect_user
         init_config
-        install_dependencies
+
+        if [ -f /.dockerenv ]; then
+                docker_prepare_nfsd
+        else
+                ./install-dependencies.sh
+        fi
+
         install_tftp
         install_nfs
         install_netboot
         echo "PXE: Installation finished"
+
+        if [ -f /.dockerenv ]; then
+                docker_run_pxe_service
+        fi
 }
 
 main "${@}"
