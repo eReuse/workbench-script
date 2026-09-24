@@ -83,6 +83,8 @@ ${script_header}
 port=0
 # info: https://wiki.archlinux.org/title/Dnsmasq#Proxy_DHCP
 dhcp-range=${nfs_allowed_lan%/*},proxy
+# TODO explain better; example when not using proxy, comment above
+# dhcp-range=192.168.1.100,192.168.1.199,255.255.255.0,12h
 dhcp-boot=pxelinux.0
 pxe-service=x86PC,"Network Boot",pxelinux
 enable-tftp
