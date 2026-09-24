@@ -163,6 +163,7 @@ docker_run_pxe_service() {
 
         # dnsmasq in the foreground keeps the container alive;
         # load only our config file, logs to docker logs
+        # TODO make log-dhcp optional because is very verbose
         exec dnsmasq \
                 --keep-in-foreground \
                 --conf-file=/etc/dnsmasq.d/pxe-tftp \
