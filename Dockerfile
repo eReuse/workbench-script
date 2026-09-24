@@ -4,7 +4,7 @@ FROM debian:trixie-slim
 ENV DOCKER_BUILD true
 
 # pre install sudo
-RUN apt update && apt install -y sudo && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install -y sudo
 
 # Install dependencies
 COPY ./install-dependencies.sh /
