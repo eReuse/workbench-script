@@ -77,14 +77,21 @@ END
 
 install_tftp() {
 
+        # I assume by default proxy is the more friendly, so that's
+        #   why full is so explicit to configure
+        if [ "${dhcp_server_type}" = 'full' ]; then
+                dhcp_server_config="dhcp-range=192.168.1.100,192.168.1.199,255.255.255.0,12h"
+        else
+                dhcp_server_config="dhcp-range=${nfs_allowed_lan%/*},proxy"
+        fi
+
         # from https://wiki.debian.org/PXEBootInstall#Simple_way_-_using_Dnsmasq
         ${SUDO} tee /etc/dnsmasq.d/pxe-tftp <<END
 ${script_header}
 port=0
 # info: https://wiki.archlinux.org/title/Dnsmasq#Proxy_DHCP
-dhcp-range=${nfs_allowed_lan%/*},proxy
-# TODO explain better; example when not using proxy, comment above
-# dhcp-range=192.168.1.100,192.168.1.199,255.255.255.0,12h
+# TODO explain better
+${dhcp_server_config}
 dhcp-boot=pxelinux.0
 pxe-service=x86PC,"Network Boot",pxelinux
 enable-tftp
