@@ -5,7 +5,9 @@
 
 import signal
 import sys
+import subprocess
 import os
+import socket
 import json
 import uuid
 import hashlib
@@ -50,14 +52,15 @@ def logs(f):
 @logs
 def exec_cmd(cmd):
     logger.info(_('Running command `%s`'), cmd)
-    return os.popen(cmd).read()
+    result = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
+    return result.stdout
 
 
 @logs
 def exec_cmd_erase(cmd):
     logger.info(_('Running command `%s`'), cmd)
     return ''
-    # return os.popen(cmd).read()
+    # return subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, text=True)
 
 ## End Utility functions ##
 
@@ -451,7 +454,9 @@ def load_config(config_file="settings.ini"):
         'wb_sign_token': None,
         'disable_qr': False,
         'http_max_retries': 5,
-        'http_retry_delay': 5
+        'http_retry_delay': 5,
+        'wifi_essid': None,
+        'wifi_password': None,
     }
 
     if not os.path.exists(config_file):
@@ -463,8 +468,12 @@ def load_config(config_file="settings.ini"):
     config = configparser.ConfigParser()
     config.read(config_file)
 
-    result = {}
+    # Strip surrounding quotes from all raw values in config
+    if config.has_section('settings'):
+        for key in config['settings']:
+            config['settings'][key] = config['settings'][key].strip().strip('"').strip("'")
 
+    result = {}
     # Iterate through defaults to extract values dynamically
     for key, default_val in defaults.items():
         if config.has_option('settings', key):
@@ -523,6 +532,16 @@ def prepare_logger():
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
+def nmcli__is_eth_connected():
+    result = subprocess.run(
+        ['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE', 'dev'],
+        capture_output=True, text=True
+    )
+    for line in result.stdout.splitlines():
+        if ':ethernet:' in line and ':connected' in line:
+            return True
+    return False
+
 def main():
     prepare_lang()
     prepare_logger()
@@ -573,6 +592,19 @@ def main():
             snapshot = json.dumps(snapshot)
 
     save_snapshot_in_disk(snapshot, config['path'], snap_uuid)
+
+    # Connect once to the Internet (only on workbench live)
+    if socket.gethostname() == "workbench" and not os.path.exists("/tmp/workbench_lock"):
+        if nmcli__is_eth_connected():
+            exec_cmd('nmcli con add type ethernet con-name "dhcp-eth" ipv4.method auto')
+            exec_cmd('nmcli con up "dhcp-eth"')
+        else:
+            wifi_cmd = ("nmcli dev wifi connect %s password %s" %
+                        (config['wifi_essid'], config['wifi_password']))
+            exec_cmd(wifi_cmd)
+        # give some extra time for connecting
+        time.sleep(2)
+        exec_cmd('systemctl restart chrony')
 
     if config['url']:
         send_snapshot_to_devicehub(
