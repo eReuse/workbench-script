@@ -4,6 +4,8 @@
 
 Permite arrancar workbench a través de la red en vez de por USB. Utiliza la misma imagen generada por el script [deploy-workbench.sh](../deploy-workbench.sh), pero en el formato compatible con el arranque por red en vez de la iso.
 
+El servidor aporta un servicio de arranque por red tipo PXE (soportando tanto equipos **Legacy BIOS** como **UEFI**), y actúa como un "Proxy DHCP", por lo que no hace colisión con un servidor DHCP existente en la red.
+
 Ejecuta el siguiente script en un servidor debian estable que estará dedicado a la gestión del pxe server
 
 ```
@@ -43,6 +45,51 @@ Y para terminar, probar el cliente PXE con el siguiente comando:
 ```
 make test_pxe
 ```
+
+## Uso de Docker (Recomendado)
+
+El método recomendado para ejecutar este servicio es mediante Docker, ya que aísla las dependencias (NFS, dnsmasq, etc.) del sistema anfitrión y evita conflictos de red o puertos.
+
+### 1. Preparar la configuración
+Copia el archivo de variables de entorno y ajústalo a tu red local. Es **fundamental** definir correctamente la IP del servidor (`server_ip`) y la subred permitida (`nfs_allowed_lan`).
+
+```bash
+cp .env.example .env
+nano .env
+
+### 2. Iniciar Servicio
+docker compose up -d --build
+
+### 3. Configuración del Firewall (UFW)
+Dado que el contenedor utiliza la red del host (`network_mode: host`), el firewall de tu máquina anfitriona afectará directamente al servidor PXE. Si utilizas **UFW** (por defecto en Ubuntu/Debian) y está habilitado, los clientes podrían fallar con "*no offer received*" (bloqueo DHCP) o "*connection timed out*" al intentar montar el volumen NFS.
+
+Tienes dos formas de configurar el firewall para permitir el tráfico de DHCP, TFTP y NFS:
+
+**Método A: Permitir la subred local**
+Como NFS utiliza puertos dinámicos por defecto, la forma más fiable de evitar problemas al montar la imagen es permitir todo el tráfico proveniente de la subred donde están los clientes (reemplaza la IP por el valor de tu variable `nfs_allowed_lan`):
+
+```bash
+sudo ufw allow from 192.168.3.0/24
+
+
+**Método B: Abrir puertos específicos**
+Debes abrir los siguientes puertos para permitir el tráfico de DHCP, TFTP y NFS:
+
+```bash
+# Permitir DHCP y ProxyDHCP (DNSMASQ)
+sudo ufw allow 67/udp
+sudo ufw allow 4011/udp
+
+# Permitir TFTP (DNSMASQ)
+sudo ufw allow 69/udp
+
+# Permitir NFS y RPCBind
+sudo ufw allow 111
+sudo ufw allow 2049
+
+# Permitir mountd (requerido por NFS)
+sudo ufw allow 20048
+
 
 ## Recursos
 
