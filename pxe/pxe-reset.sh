@@ -79,7 +79,9 @@ install_tftp() {
 
         # I assume by default proxy is the more friendly, so that's
         #   why full is so explicit to configure
-        if [ "${dhcp_server_type}" = 'full' ]; then
+        #   (using :-proxy safely defaults to proxy if undefined in .env)
+        if [ "${dhcp_server_type:-proxy}" = 'full' ]; then
+                # Note: You might want to make this IP range dynamic in the future!
                 dhcp_server_config="dhcp-range=192.168.1.100,192.168.1.199,255.255.255.0,12h"
         else
                 dhcp_server_config="dhcp-range=${nfs_allowed_lan%/*},proxy"
@@ -147,6 +149,7 @@ init_config() {
         # vars used in envsubst require to be exported:
         export server_ip="${server_ip}"
         export nfs_path="${nfs_path:-/srv/pxe-nfs}"
+        export dhcp_server_type="${dhcp_server_type:-proxy}"
 }
 
 # TODO reduce comments?
