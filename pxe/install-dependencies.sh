@@ -20,6 +20,7 @@ main() {
                   rsync
                   syslinux
                   syslinux-common
+                  syslinux-efi
                   gettext-base'
 
         # install all

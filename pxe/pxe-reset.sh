@@ -92,10 +92,21 @@ install_tftp() {
 ${script_header}
 port=0
 # info: https://wiki.archlinux.org/title/Dnsmasq#Proxy_DHCP
-# TODO explain better
 ${dhcp_server_config}
-dhcp-boot=pxelinux.0
-pxe-service=x86PC,"Network Boot",pxelinux
+
+# 1. identify UEFI vs BIOS clients based on architecture
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-match=set:efi-x86_64,option:client-arch,9
+
+# 2. serve the correct bootfile for standard DHCP requests (Full DHCP mode)
+dhcp-boot=tag:!efi-x86_64,pxelinux.0
+dhcp-boot=tag:efi-x86_64,syslinux.efi
+
+# 3. provide PXE menus based on architecture (Proxy DHCP mode)
+pxe-service=x86PC,"Network Boot (BIOS)",pxelinux
+pxe-service=X86-64_EFI,"Network Boot (UEFI)",syslinux.efi
+pxe-service=BC_EFI,"Network Boot (UEFI)",syslinux.efi
+
 enable-tftp
 tftp-root=${tftp_path}
 END
@@ -119,6 +130,9 @@ install_netboot() {
 
                 ${SUDO} cp -v /usr/lib/syslinux/memdisk "${tftp_path}/"
                 ${SUDO} cp -v /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
+
+                ${SUDO} cp -v /usr/lib/SYSLINUX.EFI/efi64/syslinux.efi "${tftp_path}/"
+                ${SUDO} cp -v /usr/lib/syslinux/modules/efi64/* "${tftp_path}/"
                 if [ ! -f ./pxe-menu.cfg ]; then
                         ${SUDO} cp -v ./pxe-menu.cfg.example pxe-menu.cfg
                         echo "WARNING: pxe-menu.cfg was not there, pxe-menu.cfg.example was copied, this only happens once"
@@ -166,9 +180,16 @@ docker_prepare_nfsd() {
 
 docker_run_pxe_service() {
         # nfs: exports were written by install_nfs
+        # unexport everything and kill old threads
+        exportfs -au || true
+        rpc.nfsd 0 || true
         exportfs -ra
-        rpc.nfsd 8
-        rpc.mountd
+
+        rpc.nfsd -V 3 -H 0.0.0.0 8
+
+        # run mountd on a fixed port so it doesnt grab a random
+        rpc.mountd -V 3 -p 20048
+
         echo "PXE: NFS started"
 
         # dnsmasq in the foreground keeps the container alive;
