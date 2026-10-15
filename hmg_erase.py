@@ -360,7 +360,7 @@ def _safe(win, y: int, x: int, text: str, attr: int = 0) -> None:
 
 def _draw_header(stdscr, subtitle: str = "") -> None:
     h, w = stdscr.getmaxyx()
-    title = f" HMG Infosec Standard 5 – Disk Erasure Tool  v{VERSION} "
+    title = f" HMG Infosec Standard 5 - Disk Erasure Tool  v{VERSION} "
     try:
         stdscr.attron(cp(C_HEADER) | curses.A_BOLD)
         stdscr.addstr(0, 0, title.center(w - 1))
