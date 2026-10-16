@@ -173,15 +173,16 @@ create_boot_system() {
 compress_chroot_dir() {
         # Faster squashfs when debugging -> src https://forums.fedoraforum.org/showthread.php?284366-squashfs-wo-compression-speed-up
         if [ "${DEBUG:-}" ]; then
-                DEBUG_SQUASHFS_ARGS='-noI -noD -noF -noX'
+                SQUASHFS_COMP_ARGS='-noI -noD -noF -noX'
+        else
+                SQUASHFS_COMP_ARGS='-comp zstd -Xcompression-level 19 -b 1M'
         fi
-
         # why squashfs -> https://unix.stackexchange.com/questions/163190/why-do-liveusbs-use-squashfs-and-similar-file-systems
         # noappend option needed to avoid this situation -> https://unix.stackexchange.com/questions/80447/merging-preexisting-source-folders-in-mksquashfs
         ${SUDO} mksquashfs \
                 "${ISO_PATH}/chroot" \
                 "${ISO_PATH}/staging/live/filesystem.squashfs" \
-                ${DEBUG_SQUASHFS_ARGS:-} \
+                ${SQUASHFS_COMP_ARGS} \
                 -noappend -e boot
 }
 
@@ -504,9 +505,21 @@ chroot_kbd_conf
 #     src https://www.systutorials.com/changing-linux-users-password-in-one-command-line/
 printf '${root_passwd}\n${root_passwd}' | passwd root
 
+apt-get install -y --no-install-recommends xz-utils < /dev/null
+if [ -f /etc/initramfs-tools/initramfs.conf ]; then
+        sed -i 's/^COMPRESS=.*/COMPRESS=xz/' /etc/initramfs-tools/initramfs.conf
+        update-initramfs -u -k all
+fi
+
 # general cleanup if production image
 if [ -z "${DEBUG:-}" ]; then
-  apt-get clean < /dev/null
+        apt-get autoremove -y --purge < /dev/null
+        apt-get clean < /dev/null
+        rm -rf /var/lib/apt/lists/*
+        rm -rf /var/cache/apt/archives/*
+        rm -rf /usr/share/doc/*
+        rm -rf /usr/share/man/*
+        rm -rf /var/log/*.log /var/log/apt/* /var/log/journal/*
 fi
 
 # cleanup bash history
