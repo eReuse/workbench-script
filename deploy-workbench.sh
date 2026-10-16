@@ -148,6 +148,8 @@ EOF
         ${SUDO} cp /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed /tmp/grubx64.efi
         ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" /tmp/grub.cfg
 
+        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" "${ISO_PATH}/staging/EFI/debian/grub.cfg"
+        ${SUDO} cp "${ISO_PATH}/tmp/grub-standalone.cfg" "${ISO_PATH}/staging/EFI/boot/grub.cfg"
         (
                 cd "${ISO_PATH}/staging/EFI/boot"
                 ${SUDO} dd if=/dev/zero of=efiboot.img bs=1M count=20
