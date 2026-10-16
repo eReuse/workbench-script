@@ -20,7 +20,7 @@ main() {
                   rsync
                   syslinux
                   syslinux-common
-                  syslinux-efi
+                  grub-efi-amd64-signed
                   gettext-base'
 
         # install all

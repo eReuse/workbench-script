@@ -100,12 +100,12 @@ dhcp-match=set:efi-x86_64,option:client-arch,9
 
 # 2. serve the correct bootfile for standard DHCP requests (Full DHCP mode)
 dhcp-boot=tag:!efi-x86_64,pxelinux.0
-dhcp-boot=tag:efi-x86_64,syslinux.efi
+dhcp-boot=tag:efi-x86_64,grubx64.efi
 
 # 3. provide PXE menus based on architecture (Proxy DHCP mode)
 pxe-service=x86PC,"Network Boot (BIOS)",pxelinux
-pxe-service=X86-64_EFI,"Network Boot (UEFI)",syslinux.efi
-pxe-service=BC_EFI,"Network Boot (UEFI)",syslinux.efi
+pxe-service=X86-64_EFI,"Network Boot (UEFI)",grubx64.efi
+pxe-service=BC_EFI,"Network Boot (UEFI)",grubx64.efi
 
 enable-tftp
 tftp-root=${tftp_path}
@@ -131,8 +131,28 @@ install_netboot() {
                 ${SUDO} cp -v /usr/lib/syslinux/memdisk "${tftp_path}/"
                 ${SUDO} cp -v /usr/lib/syslinux/modules/bios/* "${tftp_path}/"
 
-                ${SUDO} cp -v /usr/lib/SYSLINUX.EFI/efi64/syslinux.efi "${tftp_path}/"
-                ${SUDO} cp -v /usr/lib/syslinux/modules/efi64/* "${tftp_path}/"
+                ${SUDO} cp -v /usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed "${tftp_path}/grubx64.efi"
+                ${SUDO} mkdir -p "${tftp_path}/grub"
+
+                #dummy grub files so grub doesnt stutter
+                ${SUDO} mkdir -p "${tftp_path}/grub/x86_64-efi"
+                ${SUDO} touch "${tftp_path}/grub/x86_64-efi/command.lst"
+                ${SUDO} touch "${tftp_path}/grub/x86_64-efi/fs.lst"
+                ${SUDO} touch "${tftp_path}/grub/x86_64-efi/crypto.lst"
+                ${SUDO} touch "${tftp_path}/grub/x86_64-efi/terminal.lst"
+
+                ${SUDO} tee "${tftp_path}/grub/grub.cfg" <<EOF
+set default="0"
+set timeout=5
+
+menuentry "Workbench Live (UEFI)" {
+    echo "Cargando kernel..."
+    linux /vmlinuz boot=live netboot=nfs nfsroot=${server_ip}:${nfs_path} components quiet splash
+    echo "Cargando initrd..."
+    initrd /initrd
+}
+EOF
+
                 if [ ! -f ./pxe-menu.cfg ]; then
                         ${SUDO} cp -v ./pxe-menu.cfg.example pxe-menu.cfg
                         echo "WARNING: pxe-menu.cfg was not there, pxe-menu.cfg.example was copied, this only happens once"
